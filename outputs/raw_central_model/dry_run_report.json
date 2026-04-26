@@ -1,0 +1,41 @@
+{
+  "run_full_training": false,
+  "rows_total": 10237,
+  "train_rows": 5949,
+  "val_rows": 1721,
+  "test_rows": 2567,
+  "embedding_shape": [
+    10237,
+    768
+  ],
+  "kpi_tensor_shape": [
+    10237,
+    6,
+    432
+  ],
+  "kpi_micro_shape": [
+    10237,
+    4
+  ],
+  "mask_shape": [
+    10237,
+    4
+  ],
+  "model_parameter_count": 145161,
+  "forward_ok": true,
+  "shape_checks": {
+    "warning_logit": true,
+    "risk_logit": true,
+    "gate": true
+  },
+  "loss_finite": true,
+  "loss_value": 2.1124844551086426,
+  "loss_parts": {
+    "warning": 1.148179292678833,
+    "risk": 2.309997320175171,
+    "aux": 1.2983847856521606,
+    "total": 2.1124844551086426
+  },
+  "gradients_ok": true,
+  "validation_batch_size": 64
+}
