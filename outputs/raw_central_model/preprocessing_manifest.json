@@ -1,159 +1,47 @@
 {
-  "train_only_policy": "pretrained HF text encoder is fixed; embedding scaler and all numeric/KPI statistics are fitted on inner train split only",
-  "contract_integrity_report": {
-    "y_warning": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 1.0
-    },
-    "y_risk": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 1.0
-    },
-    "y_anomaly": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 1.0
-    },
-    "log_available": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 1.0
-    },
-    "kpi_available": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 1.0
-    },
-    "has_both_modalities": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 1.0
-    },
-    "kpi_avail_ratio": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 1.0
-    },
-    "kpi_series_available": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 432.0
-    },
-    "kpi_feature_count": {
-      "missing_or_inf": 0,
-      "min": 0.0,
-      "max": 2160.0
-    },
-    "kpi_recency_sec": {
-      "missing_or_inf_before_imputation": 4,
-      "imputed_fill_value": 10.0,
-      "min_after": 1.0,
-      "max_after": 10.0
-    }
-  },
+  "run_mode": "debug",
   "text_embedding": {
-    "encoder_type": "sentence_transformers_hf_google_embeddinggemma",
-    "encoder_name": "google/embeddinggemma-300m",
-    "preferred_model": "google/embeddinggemma-300m",
-    "embedding_dim_raw": 768,
-    "embedding_dim": 768,
+    "encoder_name": "deterministic_hashing_debug",
+    "encoder_loaded": false,
+    "embedding_dim": 192,
     "embedding_shape": [
-      10237,
-      768
+      900,
+      192
     ],
-    "raw_embeddings_normalized_by_encoder": true,
-    "cache_file": "outputs\\raw_central_model\\cache\\log_embeddings_google__embeddinggemma-300m.npz",
-    "unique_normalized_texts": 3752,
-    "encoded_missing_texts_this_run": 0,
-    "empty_log_text_share": 0.4318648041418384,
-    "scaler_fit_rows": 5949,
-    "encoder_manifest": {
-      "hf_enabled": true,
-      "preferred_model": "google/embeddinggemma-300m",
-      "hf_token_available": true,
-      "hf_token_source": "huggingface_hub cache",
-      "snapshot_source": "local_hf_cache",
-      "encoder_device": "cpu",
-      "embedding_dim_raw": 768,
-      "loaded_model": "google/embeddinggemma-300m",
-      "snapshot_available": true
-    }
+    "unique_normalized_texts": 494,
+    "encoded_texts_this_run": 494,
+    "empty_log_text_share": 0.4,
+    "cache_file": null,
+    "scaler_fit_rows": 400
   },
-  "log_macro_numeric": {
-    "cols": [
-      "macro_log_count",
-      "macro_unique_components",
-      "macro_warn_count",
-      "macro_error_count",
-      "macro_keyword_count",
-      "macro_log_rate"
+  "tensor_shapes": {
+    "log_embedding": [
+      900,
+      192
     ],
-    "shape": [
-      10237,
+    "log_macro": [
+      900,
       6
     ],
-    "fit_rows": 5949,
-    "imputer_strategy": "median",
-    "scaler": "StandardScaler"
-  },
-  "log_micro_numeric": {
-    "cols": [
-      "micro_log_count",
-      "micro_unique_components",
-      "micro_warn_count",
-      "micro_error_count",
-      "micro_keyword_count",
-      "micro_log_rate",
-      "micro_error_rate"
-    ],
-    "shape": [
-      10237,
+    "log_micro": [
+      900,
       7
     ],
-    "fit_rows": 5949,
-    "imputer_strategy": "median",
-    "scaler": "StandardScaler"
-  },
-  "kpi_micro_numeric": {
-    "cols": [
-      "kpi_series_available",
-      "kpi_feature_count",
-      "kpi_avail_ratio",
-      "kpi_recency_sec"
-    ],
-    "shape": [
-      10237,
-      4
-    ],
-    "fit_rows": 5949,
-    "imputer_strategy": "median",
-    "scaler": "StandardScaler"
-  },
-  "kpi_tensor": {
-    "shape": [
-      10237,
+    "kpi_tensor": [
+      900,
       6,
       432
     ],
-    "normalization": "per_stat_per_series_standardization_fit_on_inner_train",
-    "numeric_imputation_after_scaling": 0.0,
-    "availability_channel_index": 5,
-    "missing_stat_columns_count": 0,
-    "fit_rows": 5949
-  },
-  "mask_matrix": {
-    "cols": [
-      "log_available",
-      "kpi_available",
-      "has_both_modalities",
-      "kpi_avail_ratio"
-    ],
-    "shape": [
-      10237,
+    "kpi_micro": [
+      900,
       4
     ],
-    "scaling": "raw clipped masks/ratio"
-  }
+    "masks": [
+      900,
+      4
+    ]
+  },
+  "train_rows": 400,
+  "validation_rows": 250,
+  "test_rows": 250
 }

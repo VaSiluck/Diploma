@@ -1,8 +1,9 @@
 {
   "model_name": "central_fusion_multirate",
-  "text_encoder": "google/embeddinggemma-300m",
-  "run_full_training_default": false,
-  "log_embedding_dim": 768,
+  "run_mode": "debug",
+  "text_encoder": "deterministic_hashing_debug",
+  "run_full_training": false,
+  "log_embedding_dim": 192,
   "log_macro_dim": 6,
   "log_micro_dim": 7,
   "kpi_channels": 6,
@@ -14,11 +15,12 @@
   "use_aux_heads": true,
   "lambda_risk": 0.35,
   "lambda_aux": 0.12,
-  "batch_size_full_training": 128,
-  "max_epochs_full_training": 120,
-  "patience_full_training": 14,
+  "batch_size": 64,
+  "dry_run_batch_size": 32,
+  "max_epochs": 3,
+  "patience": 14,
   "learning_rate": 0.001,
   "weight_decay": 0.0001,
   "seed": 42,
-  "model_parameter_count": 145161
+  "model_parameter_count": 90954
 }

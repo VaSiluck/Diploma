@@ -1,27 +1,38 @@
 {
+  "run_mode": "debug",
   "run_full_training": false,
-  "rows_total": 10237,
-  "train_rows": 5949,
-  "val_rows": 1721,
-  "test_rows": 2567,
+  "device": "cpu",
+  "rows_total": 900,
+  "train_rows": 400,
+  "val_rows": 250,
+  "test_rows": 250,
+  "batch_size_seen": 32,
   "embedding_shape": [
-    10237,
-    768
+    900,
+    192
+  ],
+  "log_macro_shape": [
+    900,
+    6
+  ],
+  "log_micro_shape": [
+    900,
+    7
   ],
   "kpi_tensor_shape": [
-    10237,
+    900,
     6,
     432
   ],
   "kpi_micro_shape": [
-    10237,
+    900,
     4
   ],
   "mask_shape": [
-    10237,
+    900,
     4
   ],
-  "model_parameter_count": 145161,
+  "model_parameter_count": 90954,
   "forward_ok": true,
   "shape_checks": {
     "warning_logit": true,
@@ -29,13 +40,12 @@
     "gate": true
   },
   "loss_finite": true,
-  "loss_value": 2.1124844551086426,
+  "loss_value": 2.133443832397461,
   "loss_parts": {
-    "warning": 1.148179292678833,
-    "risk": 2.309997320175171,
-    "aux": 1.2983847856521606,
-    "total": 2.1124844551086426
+    "warning": 1.1841182708740234,
+    "risk": 2.3039910793304443,
+    "aux": 1.191072940826416,
+    "total": 2.133443832397461
   },
-  "gradients_ok": true,
-  "validation_batch_size": 64
+  "gradients_ok": true
 }
