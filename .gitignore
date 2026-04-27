@@ -1,2 +1,3 @@
 raw_data/
 outputs/raw_multirate/aligned_multirate_windows.csv
+outputs/raw_multirate/baseline_summary_metrics.json
