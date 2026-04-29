@@ -16,7 +16,6 @@ COMPACT_BUNDLE_FILES = [
     "central_model_metrics.json",
     "baseline_comparison.csv",
     "model_card_central_fusion.md",
-    "inference_manifest.json",
 ]
 
 DEBUG_ARTIFACT_FILES = [
@@ -24,6 +23,14 @@ DEBUG_ARTIFACT_FILES = [
     "preprocessing_manifest.json",
     "model_config.json",
     "dry_run_report.json",
+    "inference_manifest.json",
+    "inference_store.csv",
+    "central_model_predictions.csv",
+]
+
+PREDICTION_STORE_FILES = [
+    "inference_store.csv",
+    "central_model_predictions.csv",
 ]
 
 
@@ -38,6 +45,8 @@ class InferenceBundleStatus:
     inference_manifest: dict[str, Any]
     model_card: str
     baseline_comparison: pd.DataFrame
+    prediction_store: pd.DataFrame
+    prediction_store_path: Path | None
     debug_metadata: dict[str, Any]
 
 
@@ -67,6 +76,15 @@ def _read_csv(path: Path) -> pd.DataFrame:
         return pd.read_csv(path)
     except Exception:
         return pd.DataFrame()
+
+
+def _read_prediction_store(model_dir: Path) -> tuple[pd.DataFrame, Path | None]:
+    for name in PREDICTION_STORE_FILES:
+        path = model_dir / name
+        frame = _read_csv(path)
+        if not frame.empty:
+            return frame, path
+    return pd.DataFrame(), None
 
 
 def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> InferenceBundleStatus:
@@ -109,6 +127,7 @@ def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> Inferen
         "model_config": _read_json(model_dir / "model_config.json"),
         "dry_run_report": _read_json(model_dir / "dry_run_report.json"),
     }
+    prediction_store, prediction_store_path = _read_prediction_store(model_dir)
 
     return InferenceBundleStatus(
         model_dir=model_dir,
@@ -120,6 +139,8 @@ def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> Inferen
         inference_manifest=_read_json(model_dir / "inference_manifest.json"),
         model_card=_read_text(model_dir / "model_card_central_fusion.md"),
         baseline_comparison=_read_csv(model_dir / "baseline_comparison.csv"),
+        prediction_store=prediction_store,
+        prediction_store_path=prediction_store_path,
         debug_metadata=debug_metadata,
     )
 
@@ -141,4 +162,3 @@ def artifact_checks_frame(checks: list[ArtifactCheck]) -> pd.DataFrame:
             }
         )
     return pd.DataFrame(rows)
-

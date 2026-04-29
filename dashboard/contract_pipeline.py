@@ -86,21 +86,40 @@ KPI_FAMILY_ORDER = {
 }
 
 KPI_METRIC_ORDER = {
-    "iowait": 0,
-    "wa": 1,
-    "util": 2,
-    "r_await": 3,
-    "w_await": 4,
-    "memused": 5,
-    "kbmemused": 6,
-    "commit": 7,
-    "rxkb_s": 8,
-    "txkb_s": 9,
-    "ifutil": 10,
-    "idle": 11,
-    "user": 12,
-    "system": 13,
-    "free": 14,
+    "idle": 0,
+    "user": 1,
+    "system": 2,
+    "iowait": 3,
+    "wa": 4,
+    "us": 5,
+    "sy": 6,
+    "id": 7,
+    "memused": 0,
+    "kbmemused": 1,
+    "kbavail": 2,
+    "commit": 3,
+    "swpused": 4,
+    "free": 5,
+    "util": 0,
+    "rkb_s": 1,
+    "wkb_s": 2,
+    "r_s": 3,
+    "w_s": 4,
+    "r_await": 5,
+    "w_await": 6,
+    "aqu_sz": 7,
+    "rxkb_s": 0,
+    "txkb_s": 1,
+    "ifutil": 2,
+    "rxpck_s": 3,
+    "txpck_s": 4,
+    "r": 8,
+    "b": 9,
+    "swpd": 10,
+    "si": 11,
+    "so": 12,
+    "bi": 13,
+    "bo": 14,
 }
 
 KPI_STAT_ORDER = {
@@ -180,7 +199,7 @@ def _is_kpi_evidence_column(column: str) -> bool:
     return _metric_token_score(lower) < 99
 
 
-def select_dashboard_columns(contract_path: Path, max_kpi_columns: int = 220) -> tuple[list[str], list[str]]:
+def select_dashboard_columns(contract_path: Path, max_kpi_columns: int = 720) -> tuple[list[str], list[str]]:
     """Read only the columns needed for the dashboard preview and evidence panels."""
     header = pd.read_csv(contract_path, nrows=0).columns.tolist()
     header_set = set(header)
@@ -200,9 +219,36 @@ def select_dashboard_columns(contract_path: Path, max_kpi_columns: int = 220) ->
             0 if "__max_dim__" in col else 1,
             col,
         ),
-    )[:max_kpi_columns]
+    )
 
-    return keep + kpi_candidates, kpi_candidates
+    # Keep a balanced dashboard slice. Taking the first N sorted KPI columns
+    # over-represents CPU because cpustat sorts before the other families.
+    by_family: dict[int, list[str]] = {}
+    for col in kpi_candidates:
+        by_family.setdefault(_family_score(col), []).append(col)
+
+    selected_kpi: list[str] = []
+    family_keys = sorted(by_family)
+    per_family = max(1, max_kpi_columns // max(len(family_keys), 1))
+    for family_key in family_keys:
+        selected_kpi.extend(by_family[family_key][:per_family])
+
+    cursor = {family_key: min(per_family, len(cols)) for family_key, cols in by_family.items()}
+    while len(selected_kpi) < max_kpi_columns:
+        added = False
+        for family_key in family_keys:
+            pos = cursor[family_key]
+            cols = by_family[family_key]
+            if pos < len(cols):
+                selected_kpi.append(cols[pos])
+                cursor[family_key] = pos + 1
+                added = True
+                if len(selected_kpi) >= max_kpi_columns:
+                    break
+        if not added:
+            break
+
+    return keep + selected_kpi, selected_kpi
 
 
 def build_artifact_checks(

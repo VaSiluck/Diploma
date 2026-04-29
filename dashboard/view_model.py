@@ -18,13 +18,13 @@ STATE_LABELS = {
 }
 
 CASE_LABELS = {
-    "multimodal_risk": "мультимодальная аномалия",
-    "warning_only": "только предупреждение",
-    "kpi_missing": "KPI отсутствуют",
-    "normal": "норма",
+    "risk_escalation": "рост риска перед сбоем",
+    "early_warning": "раннее предупреждение",
+    "degraded_fallback": "неполные KPI",
+    "normal_reference": "нормальный эталон",
 }
 
-CASE_ORDER = ["multimodal_risk", "warning_only", "kpi_missing", "normal"]
+CASE_ORDER = ["risk_escalation", "early_warning", "degraded_fallback", "normal_reference"]
 
 LOG_PATTERNS = [
     (r"blk_update_request|buffer i/o|i/o error", "I/O error / storage"),
@@ -46,14 +46,25 @@ FAMILY_LABELS = {
 }
 
 METRIC_LABELS = {
+    "user": "user CPU",
+    "system": "system CPU",
     "iowait": "I/O wait",
     "wa": "I/O wait",
     "util": "utilization",
+    "r_s": "read ops/s",
+    "w_s": "write ops/s",
+    "rkb_s": "read KB/s",
+    "wkb_s": "write KB/s",
     "r_await": "read await",
     "w_await": "write await",
+    "aqu_sz": "queue depth",
     "memused": "memory used",
     "kbmemused": "memory used",
+    "kbavail": "available memory",
     "commit": "commit",
+    "swpused": "swap used",
+    "rxpck_s": "RX packets/s",
+    "txpck_s": "TX packets/s",
     "rxkb_s": "RX KB/s",
     "txkb_s": "TX KB/s",
     "ifutil": "interface util",
@@ -115,6 +126,71 @@ def _target_proxy_scores(df: pd.DataFrame) -> pd.DataFrame:
         np.where(log_available.eq(1), 1.0, np.where(kpi_available.eq(1), 0.0, 0.5)),
     )
     out["confidence"] = np.nan
+    out["score_source"] = "proxy"
+    return out
+
+
+def _apply_model_scores(df: pd.DataFrame, inference: InferenceBundleStatus) -> pd.DataFrame:
+    out = _target_proxy_scores(df)
+    store = inference.prediction_store.copy()
+    required = {"run_id", "window_ts", "warning_score", "risk_score"}
+    if store.empty or not required.issubset(store.columns):
+        out["score_source"] = "proxy_fallback"
+        return out
+
+    store["run_id"] = store["run_id"].astype(str)
+    store["window_ts"] = pd.to_datetime(store["window_ts"], utc=True, errors="coerce")
+    store = store.dropna(subset=["run_id", "window_ts"]).drop_duplicates(["run_id", "window_ts"], keep="last")
+
+    model_cols = [
+        "run_id",
+        "window_ts",
+        "warning_score",
+        "risk_score",
+        "fusion_gate",
+        "pred_warning",
+        "pred_risk",
+        "pred_state",
+        "threshold_warning",
+        "threshold_risk",
+    ]
+    model_cols = [col for col in model_cols if col in store.columns]
+    model = store[model_cols].rename(
+        columns={
+            "warning_score": "model_warning_score",
+            "risk_score": "model_risk_score",
+            "fusion_gate": "model_fusion_gate",
+            "pred_warning": "model_pred_warning",
+            "pred_risk": "model_pred_risk",
+            "pred_state": "model_pred_state",
+            "threshold_warning": "model_threshold_warning",
+            "threshold_risk": "model_threshold_risk",
+        }
+    )
+
+    out = out.merge(model, on=["run_id", "window_ts"], how="left")
+    has_model = out["model_risk_score"].notna()
+    out.loc[has_model, "warning_score"] = pd.to_numeric(out.loc[has_model, "model_warning_score"], errors="coerce")
+    out.loc[has_model, "risk_score"] = pd.to_numeric(out.loc[has_model, "model_risk_score"], errors="coerce")
+    if "model_fusion_gate" in out.columns:
+        out.loc[has_model & out["model_fusion_gate"].notna(), "fusion_gate"] = pd.to_numeric(
+            out.loc[has_model & out["model_fusion_gate"].notna(), "model_fusion_gate"],
+            errors="coerce",
+        )
+
+    if "model_pred_state" in out.columns:
+        state = out["model_pred_state"].fillna("").astype(str).str.lower()
+        valid_state = has_model & state.isin(["normal", "warning", "risk"])
+        out.loc[valid_state, "pred_state"] = state.loc[valid_state]
+
+    if "model_pred_risk" in out.columns and "model_pred_warning" in out.columns:
+        pred_risk = pd.to_numeric(out["model_pred_risk"], errors="coerce").fillna(0).astype(int)
+        pred_warning = pd.to_numeric(out["model_pred_warning"], errors="coerce").fillna(0).astype(int)
+        derived = np.select([pred_risk.eq(1), pred_warning.eq(1)], ["risk", "warning"], default="normal")
+        out.loc[has_model, "pred_state"] = derived[has_model]
+
+    out["score_source"] = np.where(has_model, "model_store", "proxy_fallback")
+    out["confidence"] = np.where(has_model, np.maximum(out["warning_score"], out["risk_score"]), np.nan)
     return out
 
 
@@ -144,10 +220,12 @@ def _build_baseline_table(bundle: ContractBundle, inference: InferenceBundleStat
 
 def build_dashboard_view(bundle: ContractBundle, inference: InferenceBundleStatus) -> DashboardView:
     if inference.ready:
-        # The project currently has no compact bundle in the snapshot. The UI still
-        # keeps a separate mode so real scoring can be wired without changing layout.
-        timeline = _target_proxy_scores(bundle.timeline)
-        mode_note = "Compact bundle найден; scoring-адаптер готов к подключению в следующем срезе."
+        timeline = _apply_model_scores(bundle.timeline, inference)
+        model_rows = int(timeline["score_source"].eq("model_store").sum())
+        mode_note = (
+            f"Model-scoring: используются сохранённые предсказания central fusion "
+            f"для {model_rows} contract-окон; остальные окна остаются proxy-fallback."
+        )
     else:
         timeline = _target_proxy_scores(bundle.timeline)
         mode_note = (
@@ -170,16 +248,66 @@ def build_dashboard_view(bundle: ContractBundle, inference: InferenceBundleStatu
 def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     used: set[tuple[str, pd.Timestamp]] = set()
+    used_runs: set[str] = set()
 
-    def add_case(kind: str, frame: pd.DataFrame, sort_cols: list[str], ascending: list[bool], note: str) -> None:
+    risk_score = pd.to_numeric(timeline.get("risk_score", 0.0), errors="coerce").fillna(0.0)
+    warning_score = pd.to_numeric(timeline.get("warning_score", risk_score), errors="coerce").fillna(risk_score)
+    log_available = pd.to_numeric(timeline.get("log_available", 0), errors="coerce").fillna(0).astype(int).eq(1)
+    kpi_available = pd.to_numeric(timeline.get("kpi_available", 0), errors="coerce").fillna(0).astype(int).eq(1)
+    both_modalities = log_available & kpi_available
+    minutes_before_fail = pd.to_numeric(timeline.get("minutes_before_fail", np.nan), errors="coerce")
+    pred_state = timeline.get("pred_state", pd.Series("normal", index=timeline.index)).fillna("normal").astype(str)
+
+    def case_note(kind: str, row: pd.Series) -> str:
+        workload = str(row.get("workload", "") or "").strip()
+        scenario = str(row.get("scenario", "") or "").strip()
+        context = f"{workload}/{scenario}".strip("/") or str(row.get("run_id", "run"))
+        if kind == "risk_escalation":
+            return (
+                f"{context}: фрагмент с высоким риском и обеими модальностями. "
+                "Подходит для показа роста score, лог-паттернов и KPI-сигналов перед сбоем."
+            )
+        if kind == "early_warning":
+            return (
+                f"{context}: окно в зоне предупреждения до критического риска. "
+                "Нужно для демонстрации раннего сигнала, когда система еще не перешла в аварийную область."
+            )
+        if kind == "degraded_fallback":
+            return (
+                f"{context}: часть KPI недоступна, поэтому replay явно показывает degraded/fallback context. "
+                "Сценарий проверяет, что интерфейс не скрывает неполноту модальностей."
+            )
+        return (
+            f"{context}: спокойный участок без target warning/risk и без выраженных лог-ошибок. "
+            "Это эталон для сравнения масштаба шума с предупреждением и риском."
+        )
+
+    def add_case(kind: str, frame: pd.DataFrame, sort_cols: list[str], ascending: list[bool]) -> None:
         if frame.empty:
             return
-        frame = frame.sort_values(sort_cols, ascending=ascending).copy()
-        row = frame.iloc[0]
-        key = (str(row["run_id"]), pd.Timestamp(row["window_ts"]))
-        if key in used:
+        existing_sort_cols = [col for col in sort_cols if col in frame.columns]
+        existing_ascending = ascending[: len(existing_sort_cols)]
+        if existing_sort_cols:
+            frame = frame.sort_values(existing_sort_cols, ascending=existing_ascending).copy()
+        chosen: pd.Series | None = None
+        for _, candidate in frame.iterrows():
+            run_id = str(candidate["run_id"])
+            key = (run_id, pd.Timestamp(candidate["window_ts"]))
+            if key not in used and run_id not in used_runs:
+                chosen = candidate
+                break
+        if chosen is None:
+            for _, candidate in frame.iterrows():
+                key = (str(candidate["run_id"]), pd.Timestamp(candidate["window_ts"]))
+                if key not in used:
+                    chosen = candidate
+                    break
+        if chosen is None:
             return
+        row = chosen
+        key = (str(row["run_id"]), pd.Timestamp(row["window_ts"]))
         used.add(key)
+        used_runs.add(key[0])
         rows.append(
             {
                 "case_id": f"{kind}::{key[0]}::{key[1].strftime('%Y%m%d%H%M%S')}",
@@ -188,50 +316,105 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
                 "run_id": str(row["run_id"]),
                 "focus_window_ts": pd.Timestamp(row["window_ts"]),
                 "risk_score": _safe_float(row.get("risk_score")),
-                "note": note,
+                "note": case_note(kind, row),
             }
         )
 
+    work = timeline.copy()
+    work["_risk_score"] = risk_score
+    work["_warning_score"] = warning_score
+    work["_both_modalities"] = both_modalities.astype(int)
+    work["_minutes_before_fail"] = minutes_before_fail.fillna(-1.0)
+    work["_run_gain"] = work.groupby("run_id")["_risk_score"].transform(lambda series: float(series.max() - series.min()))
+    dashboard_kpi_columns = [col for col in work.columns if col.startswith("kpi_") and "__" in col]
+    cpu_idle = _aggregate_kpi_series(
+        work,
+        _select_kpi_columns(dashboard_kpi_columns, "cpustat", ["idle"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="min",
+    )
+    work["_cpu_usage"] = (100.0 - cpu_idle).clip(lower=0.0, upper=100.0)
+
     add_case(
-        "multimodal_risk",
-        timeline.loc[
-            timeline["y_risk"].eq(1)
-            & timeline["log_available"].eq(1)
-            & timeline["kpi_available"].eq(1)
+        "risk_escalation",
+        work.loc[
+            work["_risk_score"].ge(0.70)
+            & work["_both_modalities"].eq(1)
+            & work["fail_start"].notna()
         ],
-        ["risk_score", "macro_error_count", "macro_warn_count"],
-        [False, False, False],
-        "Окно риска с доступными логами и KPI; удобно для демонстрации multimodal evidence.",
+        ["_run_gain", "_risk_score", "_minutes_before_fail", "macro_error_count", "macro_warn_count"],
+        [False, False, True, False, False],
     )
     add_case(
-        "warning_only",
-        timeline.loc[timeline["y_warning"].eq(1) & timeline["y_risk"].eq(0)],
-        ["warning_score", "macro_warn_count", "window_ts"],
-        [False, False, True],
-        "Окно предупреждения до зоны риска; показывает раннюю динамику деградации.",
+        "early_warning",
+        work.loc[
+            work["_risk_score"].between(0.30, 0.70, inclusive="left")
+            & work["_both_modalities"].eq(1)
+            & (pred_state.eq("warning") | work["y_warning"].eq(1))
+            & work["fail_start"].notna()
+        ],
+        ["_minutes_before_fail", "_warning_score", "macro_warn_count", "window_ts"],
+        [False, False, False, True],
     )
     add_case(
-        "kpi_missing",
-        timeline.loc[timeline["kpi_available"].eq(0) | timeline["has_both_modalities"].eq(0)],
-        ["kpi_available", "risk_score", "window_ts"],
-        [True, False, True],
-        "Окно с неполной модальностью; интерфейс должен явно показывать fallback/degraded context.",
+        "degraded_fallback",
+        work.loc[
+            log_available
+            & (kpi_available.eq(False) | work.get("has_both_modalities", pd.Series(0, index=work.index)).eq(0))
+        ],
+        ["_risk_score", "macro_error_count", "macro_warn_count", "window_ts"],
+        [False, False, False, True],
     )
+
+    run_stats = work.groupby("run_id").agg(
+        n=("run_id", "size"),
+        max_risk=("_risk_score", "max"),
+        mean_risk=("_risk_score", "mean"),
+        log_coverage=("log_available", "mean"),
+        kpi_coverage=("kpi_available", "mean"),
+        warn_targets=("y_warning", "sum"),
+        risk_targets=("y_risk", "sum"),
+        max_errors=("macro_error_count", "max"),
+        max_warnings=("macro_warn_count", "max"),
+        median_cpu=("_cpu_usage", "median"),
+    )
+    normal_runs = run_stats.loc[
+        run_stats["n"].ge(5)
+        & run_stats["max_risk"].le(0.15)
+        & run_stats["warn_targets"].eq(0)
+        & run_stats["risk_targets"].eq(0)
+        & run_stats["max_errors"].fillna(0).eq(0)
+        & run_stats["max_warnings"].fillna(0).eq(0)
+        & run_stats["log_coverage"].ge(0.5)
+        & run_stats["kpi_coverage"].ge(0.5)
+        & (run_stats["median_cpu"].isna() | run_stats["median_cpu"].le(35.0))
+    ].sort_values(["median_cpu", "n", "kpi_coverage", "log_coverage", "mean_risk"], ascending=[True, False, False, False, True])
+    normal_frame = pd.DataFrame()
+    if not normal_runs.empty:
+        normal_run_id = str(normal_runs.index[0])
+        normal_run = work.loc[work["run_id"].eq(normal_run_id)].sort_values("window_ts")
+        normal_frame = normal_run.iloc[[len(normal_run) // 2]].copy()
+    else:
+        normal_frame = work.loc[
+            work["_risk_score"].le(0.15)
+            & work["y_warning"].eq(0)
+            & work["y_risk"].eq(0)
+            & log_available
+            & kpi_available
+        ]
     add_case(
-        "normal",
-        timeline.loc[timeline["y_warning"].eq(0) & timeline["y_risk"].eq(0)],
-        ["risk_score", "window_ts"],
+        "normal_reference",
+        normal_frame,
+        ["_risk_score", "window_ts"],
         [True, True],
-        "Нормальный фрагмент для сравнения с предупреждением и риском.",
     )
 
     if not rows:
         first = timeline.iloc[0]
         rows.append(
             {
-                "case_id": f"normal::{first['run_id']}::{pd.Timestamp(first['window_ts']).strftime('%Y%m%d%H%M%S')}",
-                "kind": "normal",
-                "label": CASE_LABELS["normal"],
+                "case_id": f"normal_reference::{first['run_id']}::{pd.Timestamp(first['window_ts']).strftime('%Y%m%d%H%M%S')}",
+                "kind": "normal_reference",
+                "label": CASE_LABELS["normal_reference"],
                 "run_id": str(first["run_id"]),
                 "focus_window_ts": pd.Timestamp(first["window_ts"]),
                 "risk_score": _safe_float(first.get("risk_score")),
@@ -325,41 +508,262 @@ def kpi_label(column: str) -> str:
     return f"{family} · {metric} · {stat} · {host}"
 
 
+def _select_kpi_columns(
+    kpi_columns: list[str],
+    family: str,
+    metrics: list[str],
+    stats: list[str] | None = None,
+    dims: list[str] | None = None,
+) -> list[str]:
+    stats = stats or ["last", "mean"]
+    dims = dims or ["max_dim", "mean_dim"]
+    metric_rank = {metric: idx for idx, metric in enumerate(metrics)}
+    stat_rank = {stat: idx for idx, stat in enumerate(stats)}
+    dim_rank = {dim: idx for idx, dim in enumerate(dims)}
+    ranked: list[tuple[tuple[int, int, int, str], str]] = []
+    for col in kpi_columns:
+        info = _parse_kpi_column(col)
+        if info["family"] != family:
+            continue
+        if info["metric"] not in metric_rank or info["stat"] not in stat_rank or info["dim"] not in dim_rank:
+            continue
+        ranked.append(
+            (
+                (
+                    metric_rank[info["metric"]],
+                    stat_rank[info["stat"]],
+                    dim_rank[info["dim"]],
+                    col,
+                ),
+                col,
+            )
+        )
+    return [col for _, col in sorted(ranked)]
+
+
+def _aggregate_kpi_series(run_df: pd.DataFrame, columns: list[str], how: str = "max") -> pd.Series:
+    present = [col for col in columns if col in run_df.columns]
+    if not present:
+        return pd.Series(np.nan, index=run_df.index, dtype=float)
+    values = run_df[present].apply(pd.to_numeric, errors="coerce")
+    if how == "min":
+        out = values.min(axis=1, skipna=True)
+    elif how == "sum":
+        out = values.sum(axis=1, min_count=1)
+    elif how == "median":
+        out = values.median(axis=1, skipna=True)
+    else:
+        out = values.max(axis=1, skipna=True)
+    return out.astype(float)
+
+
+def _sum_kpi_series(left: pd.Series, right: pd.Series) -> pd.Series:
+    mask = left.notna() | right.notna()
+    out = left.fillna(0.0) + right.fillna(0.0)
+    out.loc[~mask] = np.nan
+    return out.astype(float)
+
+
+def _format_metric_value(value: float, unit: str) -> str:
+    if not np.isfinite(value):
+        return "n/a"
+    if unit == "%":
+        return f"{value:.0f}%"
+    if unit == "MB/s":
+        return f"{value:.1f} MB/s" if abs(value) < 100 else f"{value:.0f} MB/s"
+    return f"{value:.3g}"
+
+
+def _make_kpi_overview_item(
+    *,
+    title: str,
+    label: str,
+    y: pd.Series,
+    current_idx: int,
+    unit: str,
+    accent: str,
+    subtitle: str,
+    columns: list[str],
+    run_df: pd.DataFrame,
+) -> dict[str, Any]:
+    current = y.iloc[current_idx] if 0 <= current_idx < len(y) else np.nan
+    if pd.isna(current):
+        current_value = np.nan
+        baseline = np.nan
+        delta = np.nan
+        score = 0.0
+        delta_text = "n/a"
+        signal = "Нет данных"
+    else:
+        current_value = float(current)
+        baseline_mask = run_df.index < max(3, len(run_df) // 4)
+        base_values = y.loc[baseline_mask].dropna()
+        if base_values.empty:
+            base_values = y.dropna()
+        baseline = float(base_values.median()) if not base_values.empty else current_value
+        std = float(base_values.std(ddof=0)) if len(base_values) > 1 else 0.0
+        delta = current_value - baseline
+        score = abs(delta) / max(std, 1e-6) if std > 0 else (0.0 if abs(delta) < 1e-9 else abs(delta))
+        if unit == "%":
+            delta_text = f"{delta:+.1f} п.п."
+        elif unit == "MB/s":
+            delta_text = f"{delta:+.1f} MB/s"
+        else:
+            delta_text = f"{delta:+.3g}"
+        signal = "Высокий" if score >= 2.0 else ("Средний" if score >= 1.0 else "Низкий")
+    return {
+        "column": "|".join(columns[:4]),
+        "title": title,
+        "label": label,
+        "value": float(current_value),
+        "value_text": _format_metric_value(float(current_value), unit),
+        "baseline": baseline,
+        "delta": delta,
+        "delta_pct": delta,
+        "delta_text": delta_text,
+        "score": float(score),
+        "signal": signal,
+        "subtitle": subtitle,
+        "unit": unit,
+        "accent": accent,
+        "x": pd.to_datetime(run_df["window_ts"], utc=True, errors="coerce"),
+        "y": y,
+    }
+
+
 def build_kpi_evidence(run_df: pd.DataFrame, kpi_columns: list[str], current_idx: int, top_n: int = 6) -> list[dict[str, Any]]:
     if run_df.empty or not kpi_columns:
         return []
     current_idx = int(np.clip(current_idx, 0, max(len(run_df) - 1, 0)))
-    baseline_mask = run_df.index < max(3, len(run_df) // 4)
     items: list[dict[str, Any]] = []
-    for col in kpi_columns:
-        if col not in run_df.columns:
-            continue
-        values = pd.to_numeric(run_df[col], errors="coerce")
-        if int(values.notna().sum()) < 2:
-            continue
-        current = values.iloc[current_idx]
-        if pd.isna(current):
-            continue
-        base_values = values.loc[baseline_mask].dropna()
-        if base_values.empty:
-            base_values = values.dropna()
-        baseline = float(base_values.median()) if not base_values.empty else float(current)
-        std = float(base_values.std(ddof=0)) if len(base_values) > 1 else 0.0
-        score = abs(float(current) - baseline) / max(std, 1e-6)
-        delta_pct = ((float(current) - baseline) / max(abs(baseline), 1e-6)) * 100.0
-        items.append(
-            {
-                "column": col,
-                "label": kpi_label(col),
-                "value": float(current),
-                "baseline": baseline,
-                "delta_pct": float(delta_pct),
-                "score": float(score),
-                "signal": "Высокий" if score >= 2.0 else ("Средний" if score >= 1.0 else "Низкий"),
-                "x": pd.to_datetime(run_df["window_ts"], utc=True, errors="coerce"),
-                "y": values,
-            }
-        )
-    items.sort(key=lambda item: item["score"], reverse=True)
-    return items[:top_n]
 
+    cpu_idle = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "cpustat", ["idle"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="min",
+    )
+    cpu_usage = (100.0 - cpu_idle).clip(lower=0.0, upper=100.0)
+    cpu_iowait = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "cpustat", ["iowait"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="max",
+    ).clip(lower=0.0, upper=100.0)
+    if cpu_usage.notna().sum() < 2:
+        cpu_user = _aggregate_kpi_series(
+            run_df,
+            _select_kpi_columns(kpi_columns, "cpustat", ["user"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+            how="max",
+        )
+        cpu_system = _aggregate_kpi_series(
+            run_df,
+            _select_kpi_columns(kpi_columns, "cpustat", ["system"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+            how="max",
+        )
+        cpu_usage = _sum_kpi_series(_sum_kpi_series(cpu_user, cpu_system), cpu_iowait).clip(lower=0.0, upper=100.0)
+    cpu_wait_current = cpu_iowait.iloc[current_idx] if cpu_iowait.notna().any() else np.nan
+    cpu_cols = _select_kpi_columns(kpi_columns, "cpustat", ["idle", "user", "system", "iowait"], stats=["last", "mean"], dims=["max_dim", "mean_dim"])
+    item = _make_kpi_overview_item(
+        title="CPU",
+        label="CPU",
+        y=cpu_usage,
+        current_idx=current_idx,
+        unit="%",
+        accent="#2563eb",
+        subtitle="пиковая загрузка узла" + (f" · I/O wait {cpu_wait_current:.1f}%" if np.isfinite(cpu_wait_current) else ""),
+        columns=cpu_cols,
+        run_df=run_df,
+    )
+    if item:
+        items.append(item)
+
+    mem_used = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "memstat", ["memused"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="max",
+    ).clip(lower=0.0, upper=100.0)
+    mem_cols = _select_kpi_columns(kpi_columns, "memstat", ["memused", "kbmemused", "commit"], stats=["last", "mean"], dims=["max_dim", "mean_dim"])
+    item = _make_kpi_overview_item(
+        title="Память",
+        label="Memory",
+        y=mem_used,
+        current_idx=current_idx,
+        unit="%",
+        accent="#7c3aed",
+        subtitle="максимальная занятость памяти среди узлов",
+        columns=mem_cols,
+        run_df=run_df,
+    )
+    if item:
+        items.append(item)
+
+    disk_util = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "iostat", ["util"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="max",
+    ).clip(lower=0.0, upper=100.0)
+    disk_read = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "iostat", ["rkb_s"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="max",
+    )
+    disk_write = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "iostat", ["wkb_s"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="max",
+    )
+    disk_throughput = _sum_kpi_series(disk_read, disk_write) / 1024.0
+    disk_flow_current = disk_throughput.iloc[current_idx] if disk_throughput.notna().any() else np.nan
+    disk_cols = _select_kpi_columns(kpi_columns, "iostat", ["util", "rkb_s", "wkb_s", "r_await", "w_await"], stats=["last", "mean"], dims=["max_dim", "mean_dim"])
+    item = _make_kpi_overview_item(
+        title="Диск",
+        label="Disk",
+        y=disk_util,
+        current_idx=current_idx,
+        unit="%",
+        accent="#f59e0b",
+        subtitle="активное время" + (f" · чтение+запись {disk_flow_current:.1f} MB/s" if np.isfinite(disk_flow_current) else ""),
+        columns=disk_cols,
+        run_df=run_df,
+    )
+    if item:
+        items.append(item)
+
+    net_rx = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "netstat", ["rxkb_s"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="max",
+    )
+    net_tx = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "netstat", ["txkb_s"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="max",
+    )
+    net_throughput = _sum_kpi_series(net_rx, net_tx) / 1024.0
+    net_util = _aggregate_kpi_series(
+        run_df,
+        _select_kpi_columns(kpi_columns, "netstat", ["ifutil"], stats=["last", "mean"], dims=["max_dim", "mean_dim"]),
+        how="max",
+    ).clip(lower=0.0, upper=100.0)
+    net_util_current = net_util.iloc[current_idx] if net_util.notna().any() else np.nan
+    net_cols = _select_kpi_columns(kpi_columns, "netstat", ["rxkb_s", "txkb_s", "ifutil"], stats=["last", "mean"], dims=["max_dim", "mean_dim"])
+    item = _make_kpi_overview_item(
+        title="Сеть",
+        label="Network",
+        y=net_throughput,
+        current_idx=current_idx,
+        unit="MB/s",
+        accent="#0f766e",
+        subtitle="прием+передача" + (f" · util {net_util_current:.1f}%" if np.isfinite(net_util_current) else ""),
+        columns=net_cols,
+        run_df=run_df,
+    )
+    if item:
+        items.append(item)
+
+    items.sort(
+        key=lambda item: (
+            {"CPU": 0, "Память": 1, "Диск": 2, "Сеть": 3}.get(str(item["title"]), 99),
+            -float(item["score"]),
+        )
+    )
+    return items[:top_n]

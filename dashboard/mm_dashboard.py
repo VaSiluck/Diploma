@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import html
-import time
+import sys
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+APP_ROOT = Path(__file__).resolve().parents[1]
+if str(APP_ROOT) not in sys.path:
+    sys.path.insert(0, str(APP_ROOT))
 
 from dashboard.contract_pipeline import (
     DataContractError,
@@ -19,7 +24,7 @@ from dashboard.ui_components import (
     build_risk_figure,
     chip_row,
     inject_css,
-    replay_dots,
+    render_baseline_table_html,
     render_log_table_html,
     safe_float,
     state_from_score,
@@ -36,16 +41,13 @@ from dashboard.view_model import (
 )
 
 
-REFRESH_SECONDS = 0.65
-
-
 @st.cache_data(show_spinner=False)
 def _load_contract_cached():
     return load_contract_bundle()
 
 
 @st.cache_data(show_spinner=False)
-def _inspect_inference_cached():
+def _inspect_inference_cached(cache_version: str = "prediction-store-v1"):
     return inspect_inference_bundle()
 
 
@@ -73,8 +75,6 @@ def _init_state(cases: pd.DataFrame) -> None:
         st.session_state.selected_case_id = str(cases.iloc[0]["case_id"])
     if "replay_step" not in st.session_state:
         st.session_state.replay_step = 0
-    if "autoplay" not in st.session_state:
-        st.session_state.autoplay = False
     if "last_case_id" not in st.session_state:
         st.session_state.last_case_id = ""
 
@@ -102,115 +102,121 @@ def current_context(cases: pd.DataFrame, timeline: pd.DataFrame) -> tuple[pd.Ser
     return case, run_df, st.session_state.replay_step
 
 
+def _move_replay(delta: int, total_steps: int) -> None:
+    st.session_state.replay_step = int(np.clip(st.session_state.replay_step + delta, 0, max(total_steps - 1, 0)))
+
+
 def render_header(case: pd.Series, current: pd.Series, step_idx: int, total_steps: int, mode: str) -> None:
     state = str(current.get("pred_state", "normal"))
     risk = safe_float(current.get("risk_score", 0.0), 0.0)
     tone = "danger" if risk >= 0.70 else ("warning" if risk >= 0.30 else "success")
     mode_value = "Scoring" if mode == "model_scoring" else "Preview"
     mode_sub = "central fusion" if mode == "model_scoring" else "без model bundle"
-
-    cols = st.columns([2.7, 1.02, 1.65, 1.28, 0.92, 1.55, 0.86], gap="small")
-    with cols[0]:
-        st.markdown(
-            """
-            <div class="app-head">
-              <div class="logo-shield">∨</div>
-              <div>
-                <div class="app-title">LCMAN Dashboard</div>
-                <div class="app-subtitle">Лабораторный интерфейс инференса риска для multimodal telemetry</div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-    with cols[1]:
-        st.markdown(top_card("Режим", mode_value, mode_sub, tone="blue"), unsafe_allow_html=True)
-    with cols[2]:
-        st.markdown(top_card("Сценарий", _short_run(str(case["run_id"])), f"Run #{int(case.get('run_number', 0)):03d}"), unsafe_allow_html=True)
-    with cols[3]:
-        st.markdown(top_card("Окно", _format_time_window(current), "выбранное evidence-окно"), unsafe_allow_html=True)
-    with cols[4]:
-        st.markdown(top_card("Шаг", f"{step_idx + 1} / {total_steps}", "replay"), unsafe_allow_html=True)
-    with cols[5]:
-        state_tone = "danger" if state == "risk" else ("warning" if state == "warning" else "success")
-        st.markdown(top_card("Текущее состояние", STATE_LABELS.get(state, state), "по текущему окну", tone=state_tone), unsafe_allow_html=True)
-    with cols[6]:
-        st.markdown(
+    state_tone = "danger" if state == "risk" else ("warning" if state == "warning" else "success")
+    risk_color = "#dc2626" if tone == "danger" else ("#d97706" if tone == "warning" else "#15803d")
+    status_cards = "".join(
+        [
+            top_card("Режим", mode_value, mode_sub, tone="blue"),
+            top_card("Сценарий", _short_run(str(case["run_id"]), limit=19), f"Run #{int(case.get('run_number', 0)):03d}"),
+            top_card("Окно", _format_time_window(current), "выбранное evidence-окно"),
+            top_card("Состояние", STATE_LABELS.get(state, state), f"шаг {step_idx + 1} / {total_steps}", tone=state_tone),
             (
                 "<div class='top-card'>"
                 "<div class='top-label'>Оценка риска</div>"
-                f"<div class='top-risk' style='color:{'#dc2626' if tone == 'danger' else ('#d97706' if tone == 'warning' else '#15803d')}'>{risk:.2f}</div>"
+                f"<div class='top-risk' style='color:{risk_color}'>{risk:.2f}</div>"
                 "<div class='top-sub'>текущий шаг</div>"
                 "</div>"
             ),
-            unsafe_allow_html=True,
-        )
+        ]
+    )
+    st.markdown(
+        f"""
+        <div class="header-grid">
+          <div class="app-head">
+            <div class="logo-shield">∨</div>
+            <div>
+              <div class="app-title">LCMAN Dashboard</div>
+              <div class="app-subtitle">Лабораторный интерфейс replay-инференса риска по логам и KPI</div>
+            </div>
+          </div>
+          <div class="status-grid">{status_cards}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_controls(cases: pd.DataFrame, timeline: pd.DataFrame) -> tuple[pd.Series, pd.DataFrame, int]:
     case, run_df, _ = current_context(cases, timeline)
 
-    top = st.columns([3.15, 2.2, 2.65], gap="small")
-    with top[0]:
-        st.markdown("### Демо-сценарии")
-        by_kind = {str(row["kind"]): row for _, row in cases.iterrows()}
-        btn_cols = st.columns([1.25, 1.14, 1.02, 0.75], gap="small")
-        for idx, kind in enumerate(CASE_ORDER):
-            row = by_kind.get(kind)
-            with btn_cols[idx]:
-                if row is None:
-                    st.button(kind, disabled=True, use_container_width=True, key=f"case_disabled_{kind}")
-                    continue
-                active = str(row["case_id"]) == st.session_state.selected_case_id
-                if st.button(
-                    str(row["label"]),
-                    key=f"case_{kind}",
-                    type="primary" if active else "secondary",
-                    use_container_width=True,
-                ):
-                    st.session_state.selected_case_id = str(row["case_id"])
-                    st.session_state.autoplay = False
+    with st.container(border=True):
+        top = st.columns([2.25, 1.15, 1.8], gap="medium")
+        with top[0]:
+            st.markdown("<div class='control-title'>Демо-сценарии</div>", unsafe_allow_html=True)
+            options = [str(row["case_id"]) for _, row in cases.iterrows()]
+            short_labels = {
+                "risk_escalation": "рост риска",
+                "early_warning": "ранний сигнал",
+                "degraded_fallback": "неполные KPI",
+                "normal_reference": "норма",
+            }
+            label_by_case = {
+                str(row["case_id"]): short_labels.get(str(row["kind"]), str(row["label"]))
+                for _, row in cases.iterrows()
+            }
+            if st.session_state.selected_case_id not in options:
+                st.session_state.selected_case_id = options[0]
+            selected = st.segmented_control(
+                "Демо-сценарии",
+                options,
+                default=st.session_state.selected_case_id,
+                format_func=lambda case_id: label_by_case.get(str(case_id), str(case_id)),
+                key="case_segment",
+                label_visibility="collapsed",
+                width="stretch",
+            )
+            if selected and str(selected) != st.session_state.selected_case_id:
+                st.session_state.selected_case_id = str(selected)
+                st.session_state.autoplay = False
+                st.rerun()
+            st.markdown(f"<div class='case-note'>{html.escape(str(case['note']))}</div>", unsafe_allow_html=True)
+
+        with top[1]:
+            st.markdown("<div class='control-title'>Replay</div>", unsafe_allow_html=True)
+            c_prev, c_next = st.columns(2, gap="small")
+            with c_prev:
+                if st.button("←", key="prev", use_container_width=True, disabled=st.session_state.replay_step <= 0, help="Предыдущий шаг"):
+                    _move_replay(-1, len(run_df))
                     st.rerun()
-        st.markdown(f"<div class='case-note'>{html.escape(str(case['note']))}</div>", unsafe_allow_html=True)
+            with c_next:
+                if st.button("→", key="next", use_container_width=True, disabled=st.session_state.replay_step >= len(run_df) - 1, help="Следующий шаг"):
+                    _move_replay(1, len(run_df))
+                    st.rerun()
 
-    with top[1]:
-        st.markdown("### Управление replay")
-        c_prev, c_play, c_pause, c_next = st.columns(4, gap="small")
-        with c_prev:
-            if st.button("◀", key="prev", use_container_width=True, disabled=st.session_state.replay_step <= 0):
-                st.session_state.replay_step -= 1
+        with top[2]:
+            real_windows = len(timeline.loc[timeline["run_id"].eq(str(case["run_id"]))])
+            st.markdown(
+                (
+                    "<div class='replay-meta'>"
+                    "<span><strong>Шкала replay</strong></span>"
+                    f"<span class='replay-step-value'>{st.session_state.replay_step + 1} / {len(run_df)}</span>"
+                    "</div>"
+                ),
+                unsafe_allow_html=True,
+            )
+            slider_value = st.slider(
+                "Шаг replay",
+                min_value=1,
+                max_value=len(run_df),
+                value=st.session_state.replay_step + 1,
+                label_visibility="collapsed",
+                key=f"slider_{st.session_state.selected_case_id}",
+            )
+            if slider_value - 1 != st.session_state.replay_step:
+                st.session_state.replay_step = slider_value - 1
                 st.session_state.autoplay = False
                 st.rerun()
-        with c_play:
-            if st.button("▶ Play", key="play", use_container_width=True):
-                st.session_state.autoplay = True
-                st.rerun()
-        with c_pause:
-            if st.button("Ⅱ Pause", key="pause", use_container_width=True, type="primary" if st.session_state.autoplay else "secondary"):
-                st.session_state.autoplay = False
-                st.rerun()
-        with c_next:
-            if st.button("▶", key="next", use_container_width=True, disabled=st.session_state.replay_step >= len(run_df) - 1):
-                st.session_state.replay_step += 1
-                st.session_state.autoplay = False
-                st.rerun()
-
-    with top[2]:
-        st.markdown("### Шкала replay")
-        st.markdown(replay_dots(len(run_df), st.session_state.replay_step), unsafe_allow_html=True)
-        slider_value = st.slider(
-            "Шаг replay",
-            min_value=1,
-            max_value=len(run_df),
-            value=st.session_state.replay_step + 1,
-            label_visibility="collapsed",
-            key=f"slider_{st.session_state.selected_case_id}",
-        )
-        if slider_value - 1 != st.session_state.replay_step:
-            st.session_state.replay_step = slider_value - 1
-            st.session_state.autoplay = False
-            st.rerun()
-        st.caption(f"{st.session_state.replay_step + 1}/{len(run_df)} · реальные окна run: {len(timeline.loc[timeline['run_id'].eq(str(case['run_id']))])}")
+            st.caption(f"{st.session_state.replay_step + 1}/{len(run_df)} · реальные окна run: {real_windows}")
 
     case = _selected_case(cases)
     run_df = run_frame_for_case(timeline, str(case["run_id"]), max_steps=36)
@@ -220,7 +226,7 @@ def render_controls(cases: pd.DataFrame, timeline: pd.DataFrame) -> tuple[pd.Ser
 
 def render_risk_panel(run_df: pd.DataFrame, step_idx: int, preview: bool) -> None:
     with st.container(border=True):
-        st.markdown("### Оценка риска во времени")
+        st.markdown("<div class='section-title'>Оценка риска во времени</div>", unsafe_allow_html=True)
         fig = build_risk_figure(run_df, step_idx, preview=preview)
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         cur = run_df.iloc[step_idx]
@@ -231,7 +237,7 @@ def render_risk_panel(run_df: pd.DataFrame, step_idx: int, preview: bool) -> Non
                     ("Логи", "доступны" if int(safe_float(cur.get("log_available"), 0)) else "нет"),
                     ("KPI", "доступны" if int(safe_float(cur.get("kpi_available"), 0)) else "нет"),
                     ("Начало сбоя", pd.Timestamp(fail_ts).strftime("%H:%M:%S") if pd.notna(fail_ts) else "n/a"),
-                    ("Режим оценки", "proxy-preview" if preview else "model-scoring"),
+                    ("Режим оценки", "proxy-preview" if preview else str(cur.get("score_source", "model_store"))),
                 ]
             ),
             unsafe_allow_html=True,
@@ -239,44 +245,92 @@ def render_risk_panel(run_df: pd.DataFrame, step_idx: int, preview: bool) -> Non
 
 
 def render_log_panel(run_df: pd.DataFrame, step_idx: int) -> None:
-    st.markdown("### Лог-доказательства")
-    log_df = build_log_evidence(run_df, step_idx)
-    st.markdown(render_log_table_html(log_df), unsafe_allow_html=True)
-    st.caption("Паттерны считаются по накопленному replay-контексту и ближайшим реальным окнам contract.")
-    excerpt = str(run_df.iloc[step_idx].get("log_text", "")).strip()
-    excerpt = " ".join(excerpt.split())
-    if len(excerpt) > 700:
-        excerpt = excerpt[:700] + "…"
-    with st.expander("Фрагмент логов выбранного окна", expanded=False):
-        st.code(excerpt or "__NO_LOG__", language="text")
+    with st.container(border=True):
+        st.markdown("<div class='section-title'>Лог-доказательства</div>", unsafe_allow_html=True)
+        log_df = build_log_evidence(run_df, step_idx)
+        st.markdown(render_log_table_html(log_df), unsafe_allow_html=True)
+        st.markdown(
+            "<div class='panel-caption'>Паттерны считаются по накопленному replay-контексту выбранного run.</div>",
+            unsafe_allow_html=True,
+        )
+        excerpt = str(run_df.iloc[step_idx].get("log_text", "")).strip()
+        excerpt = " ".join(excerpt.split())
+        if len(excerpt) > 700:
+            excerpt = excerpt[:700] + "…"
+        with st.expander("Фрагмент логов выбранного окна", expanded=False):
+            st.code(excerpt or "__NO_LOG__", language="text")
 
 
 def render_kpi_panel(run_df: pd.DataFrame, step_idx: int, kpi_columns: list[str]) -> None:
-    st.markdown("### KPI-доказательства")
-    cur = run_df.iloc[step_idx]
-    kpi_available = bool(int(safe_float(cur.get("kpi_available", 0), 0)))
-    if not kpi_available:
-        st.warning("В текущем окне KPI недоступны: доказательства ниже показывают контекст run, а не прямое подтверждение решения.")
-    evidence = build_kpi_evidence(run_df, kpi_columns, step_idx, top_n=6)
-    if not evidence:
-        st.info("Для выбранного run нет достаточных KPI-признаков в dashboard-срезе contract.")
-        return
-    cols = st.columns(2, gap="small")
-    current_ts = pd.Timestamp(cur["window_ts"])
-    for idx, item in enumerate(evidence):
-        with cols[idx % 2]:
-            with st.container(border=True):
-                st.markdown(
-                    (
-                        f"<div class='kpi-title'><span>{html.escape(str(item['label']))}</span>"
-                        f"<span class='kpi-value'>{safe_float(item['value']):.3g}</span></div>"
-                        f"<div class='small-muted'>Δ baseline: {safe_float(item['delta_pct']):+.1f}% · сигнал: {html.escape(str(item['signal']))}</div>"
-                    ),
-                    unsafe_allow_html=True,
-                )
-                fig = build_kpi_sparkline(item, current_ts=current_ts)
-                st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False}, key=f"kpi_{idx}_{item['column']}_{step_idx}")
-    st.caption("KPI-карточки используют выбранные агрегаты из `aligned_multirate_windows.csv`; серые зоны на графике риска показывают пропуски KPI.")
+    with st.container(border=True):
+        st.markdown("<div class='section-title'>KPI-доказательства</div>", unsafe_allow_html=True)
+        cur = run_df.iloc[step_idx]
+        kpi_available = bool(int(safe_float(cur.get("kpi_available", 0), 0)))
+        if not kpi_available:
+            st.warning("KPI недоступны в текущем окне; ниже показан контекст run для degraded-mode.")
+        evidence = build_kpi_evidence(run_df, kpi_columns, step_idx, top_n=8)
+        if not evidence:
+            st.info("Для выбранного run нет достаточных KPI-признаков в dashboard-срезе contract.")
+            return
+
+        def render_kpi_card(item: dict, idx: int, prefix: str) -> None:
+            accent = str(item.get("accent", "#2563eb"))
+            value_text = str(item.get("value_text", f"{safe_float(item.get('value')):.3g}"))
+            y_values = pd.to_numeric(pd.Series(item.get("y", [])), errors="coerce")
+            if item.get("unit") == "%":
+                fill_width = float(np.clip(safe_float(item.get("value")), 0.0, 100.0))
+            else:
+                ymax = float(y_values.max()) if int(y_values.notna().sum()) else 0.0
+                fill_width = float(np.clip((safe_float(item.get("value")) / max(ymax, 1e-6)) * 100.0, 0.0, 100.0))
+            st.markdown(
+                (
+                    "<div class='kpi-tm-head'>"
+                    "<div class='kpi-tm-title'>"
+                    f"<span class='kpi-tm-dot' style='background:{accent}'></span>"
+                    "<div>"
+                    f"<div class='kpi-tm-name'>{html.escape(str(item.get('title', item.get('label', 'KPI'))))}</div>"
+                    f"<div class='kpi-tm-subtitle'>{html.escape(str(item.get('subtitle', '')))}</div>"
+                    "</div>"
+                    "</div>"
+                    "<div>"
+                    f"<div class='kpi-tm-value' style='color:{accent}'>{html.escape(value_text)}</div>"
+                    f"<div class='kpi-tm-delta'>Δ baseline: {html.escape(str(item.get('delta_text', 'n/a')))} · {html.escape(str(item.get('signal', 'n/a')))}</div>"
+                    "</div>"
+                    "</div>"
+                    "<div class='kpi-tm-meter'>"
+                    f"<div class='kpi-tm-fill' style='width:{fill_width:.1f}%; background:{accent}'></div>"
+                    "</div>"
+                ),
+                unsafe_allow_html=True,
+            )
+            fig = build_kpi_sparkline(item, current_ts=current_ts)
+            st.plotly_chart(
+                fig,
+                use_container_width=True,
+                config={"displayModeBar": False},
+                key=f"{prefix}_{idx}_{item['column']}_{step_idx}",
+            )
+
+        current_ts = pd.Timestamp(cur["window_ts"])
+        primary = evidence[:4]
+        extra = evidence[4:]
+        cols = st.columns(2, gap="small")
+        for idx, item in enumerate(primary):
+            with cols[idx % 2]:
+                with st.container(border=True):
+                    render_kpi_card(item, idx, "kpi_main")
+
+        if extra:
+            with st.expander("Дополнительные KPI-карточки", expanded=False):
+                extra_cols = st.columns(2, gap="small")
+                for idx, item in enumerate(extra):
+                    with extra_cols[idx % 2]:
+                        with st.container(border=True):
+                            render_kpi_card(item, idx, "kpi_extra")
+        st.markdown(
+            "<div class='panel-caption'>Карточки агрегируют центральные KPI-семейства: CPU, память, диск и сеть. Серые/пустые состояния означают отсутствие данных в выбранном окне.</div>",
+            unsafe_allow_html=True,
+        )
 
 
 def render_side_panel(current: pd.Series, view, inference) -> None:
@@ -288,7 +342,7 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
     kpi_share = 0.0 if not kpi_available else max(0.0, 1.0 - log_share)
 
     with st.container(border=True):
-        st.markdown("### Сводка по риску")
+        st.markdown("<div class='section-title'>Сводка по риску</div>", unsafe_allow_html=True)
         rows = [
             ("Текущая оценка риска", f"{risk:.2f}"),
             ("Warning score", f"{warning:.2f}"),
@@ -303,7 +357,7 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
         st.markdown(html_rows, unsafe_allow_html=True)
 
     with st.container(border=True):
-        st.markdown("### Сводка по объединению")
+        st.markdown("<div class='section-title'>Сводка по объединению</div>", unsafe_allow_html=True)
         left, right = st.columns([0.86, 1.14], gap="small")
         with left:
             st.plotly_chart(build_fusion_figure(log_share, kpi_available), use_container_width=True, config={"displayModeBar": False})
@@ -319,9 +373,13 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
         st.caption("В preview это диагностическая оценка вклада по доступности модальностей; после train-run здесь будет `fusion_gate` модели.")
 
     with st.container(border=True):
-        st.markdown("### Пояснение")
+        st.markdown("<div class='section-title'>Пояснение</div>", unsafe_allow_html=True)
         if view.mode == "model_scoring":
-            text = "Модельный compact bundle найден. Следующий срез подключит прямое восстановление `CentralFusionMultiRate` и сохранённого preprocessing."
+            model_rows = int(view.timeline["score_source"].eq("model_store").sum()) if "score_source" in view.timeline.columns else 0
+            text = (
+                f"Dashboard использует сохранённые предсказания central fusion из train-run для {model_rows} окон. "
+                "Если выбранное окно отсутствует в inference store, оно помечается как proxy_fallback."
+            )
         else:
             text = (
                 "Compact model bundle отсутствует, поэтому интерфейс не утверждает модельный prediction. "
@@ -330,7 +388,7 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
         st.markdown(f"<div class='explain-box'>{html.escape(text)}</div>", unsafe_allow_html=True)
 
     with st.container(border=True):
-        st.markdown("### Сравнение с baseline")
+        st.markdown("<div class='section-title'>Сравнение с baseline</div>", unsafe_allow_html=True)
         baseline = view.baseline_table.copy()
         if baseline.empty:
             st.info("Baseline-сводка недоступна.")
@@ -347,7 +405,7 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
             }
             show = show.rename(columns=rename)
             keep = [col for col in ["Модель", "Цель", "AP", "ROC-AUC", "F1"] if col in show.columns]
-            st.dataframe(show[keep].head(6), use_container_width=True, hide_index=True)
+            st.markdown(render_baseline_table_html(show[keep], max_rows=6), unsafe_allow_html=True)
         if inference.missing_required:
             st.caption("Central fusion не сравнивается с baseline, пока отсутствует compact model bundle.")
 
@@ -363,11 +421,11 @@ def render_about(bundle, inference, view) -> None:
 
         st.markdown("#### Contract summary")
         summary_rows = [
-            {"Показатель": "rows", "Значение": view.stats["rows"]},
-            {"Показатель": "runs", "Значение": view.stats["runs"]},
-            {"Показатель": "workloads", "Значение": view.stats["workloads"]},
-            {"Показатель": "micro window, сек", "Значение": view.stats["micro_window_sec"]},
-            {"Показатель": "macro window, сек", "Значение": view.stats["macro_window_sec"]},
+            {"Показатель": "rows", "Значение": str(view.stats["rows"])},
+            {"Показатель": "runs", "Значение": str(view.stats["runs"])},
+            {"Показатель": "workloads", "Значение": str(view.stats["workloads"])},
+            {"Показатель": "micro window, сек", "Значение": str(view.stats["micro_window_sec"])},
+            {"Показатель": "macro window, сек", "Значение": str(view.stats["macro_window_sec"])},
             {"Показатель": "warning share", "Значение": f"{view.stats['warning_share']:.3f}"},
             {"Показатель": "risk share", "Значение": f"{view.stats['risk_share']:.3f}"},
             {"Показатель": "log coverage", "Значение": f"{view.stats['log_available_share']:.3f}"},
@@ -427,31 +485,26 @@ def main() -> None:
         ),
         unsafe_allow_html=True,
     )
-    st.caption(view.mode_note)
+    mode_note = (
+        view.mode_note
+        if view.mode != "model_scoring"
+        else view.mode_note
+    )
+    st.markdown(f"<div class='mode-note'>{html.escape(mode_note)}</div>", unsafe_allow_html=True)
 
-    main_cols = st.columns([3.75, 1.28], gap="small")
+    main_cols = st.columns([3.3, 1.0], gap="medium")
     with main_cols[0]:
         render_risk_panel(run_df, step_idx, preview=view.mode != "model_scoring")
-        lower = st.columns([1.18, 1.82], gap="small")
+        lower = st.columns([1.05, 1.75], gap="medium")
         with lower[0]:
-            with st.container(border=True):
-                render_log_panel(run_df, step_idx)
+            render_log_panel(run_df, step_idx)
         with lower[1]:
-            with st.container(border=True):
-                render_kpi_panel(run_df, step_idx, view.kpi_columns)
+            render_kpi_panel(run_df, step_idx, view.kpi_columns)
 
     with main_cols[1]:
         render_side_panel(current, view, inference)
 
     render_about(bundle, inference, view)
-
-    if st.session_state.get("autoplay", False):
-        if st.session_state.replay_step < len(run_df) - 1:
-            time.sleep(REFRESH_SECONDS)
-            st.session_state.replay_step += 1
-            st.rerun()
-        else:
-            st.session_state.autoplay = False
 
 
 if __name__ == "__main__":
