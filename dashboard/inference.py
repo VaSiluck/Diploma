@@ -16,6 +16,10 @@ COMPACT_BUNDLE_FILES = [
     "central_model_metrics.json",
     "baseline_comparison.csv",
     "model_card_central_fusion.md",
+    "dashboard_model_report.json",
+    "dashboard_replay_store.csv",
+    "seed_metrics.csv",
+    "calibration_bins.csv",
 ]
 
 DEBUG_ARTIFACT_FILES = [
@@ -29,6 +33,7 @@ DEBUG_ARTIFACT_FILES = [
 ]
 
 PREDICTION_STORE_FILES = [
+    "dashboard_replay_store.csv",
     "inference_store.csv",
     "central_model_predictions.csv",
 ]
@@ -47,6 +52,10 @@ class InferenceBundleStatus:
     baseline_comparison: pd.DataFrame
     prediction_store: pd.DataFrame
     prediction_store_path: Path | None
+    dashboard_report: dict[str, Any]
+    dashboard_replay_store: pd.DataFrame
+    seed_metrics: pd.DataFrame
+    calibration_bins: pd.DataFrame
     debug_metadata: dict[str, Any]
 
 
@@ -127,6 +136,10 @@ def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> Inferen
         "model_config": _read_json(model_dir / "model_config.json"),
         "dry_run_report": _read_json(model_dir / "dry_run_report.json"),
     }
+    dashboard_report = _read_json(model_dir / "dashboard_model_report.json")
+    dashboard_replay_store = _read_csv(model_dir / "dashboard_replay_store.csv")
+    seed_metrics = _read_csv(model_dir / "seed_metrics.csv")
+    calibration_bins = _read_csv(model_dir / "calibration_bins.csv")
     prediction_store, prediction_store_path = _read_prediction_store(model_dir)
 
     return InferenceBundleStatus(
@@ -141,6 +154,10 @@ def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> Inferen
         baseline_comparison=_read_csv(model_dir / "baseline_comparison.csv"),
         prediction_store=prediction_store,
         prediction_store_path=prediction_store_path,
+        dashboard_report=dashboard_report,
+        dashboard_replay_store=dashboard_replay_store,
+        seed_metrics=seed_metrics,
+        calibration_bins=calibration_bins,
         debug_metadata=debug_metadata,
     )
 

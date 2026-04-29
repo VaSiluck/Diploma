@@ -409,6 +409,62 @@ def load_contract_bundle(
     )
 
 
+def load_compact_replay_bundle(
+    replay_store: pd.DataFrame,
+    model_dir: Path = RAW_CENTRAL_MODEL_DIR,
+) -> ContractBundle:
+    if replay_store.empty:
+        raise DataContractError("dashboard_replay_store.csv is empty.")
+
+    timeline = replay_store.copy()
+    if "state" not in timeline.columns:
+        risk = pd.to_numeric(timeline.get("y_risk", 0), errors="coerce").fillna(0).astype(int)
+        warning = pd.to_numeric(timeline.get("y_warning", 0), errors="coerce").fillna(0).astype(int)
+        timeline["state"] = np.select([risk.eq(1), warning.eq(1)], ["risk", "warning"], default="normal")
+    if "micro_window_sec" not in timeline.columns:
+        timeline["micro_window_sec"] = 10
+    if "macro_window_sec" not in timeline.columns:
+        timeline["macro_window_sec"] = 60
+
+    timeline = _prepare_contract_frame(timeline)
+    kpi_columns = [col for col in timeline.columns if col.startswith("kpi_dashboard_")]
+    checks = [
+        ArtifactCheck(
+            name="dashboard_replay_store",
+            path=model_dir / "dashboard_replay_store.csv",
+            required=True,
+            found=True,
+            note="Compact test/model-store окна из notebook 03.",
+        ),
+        ArtifactCheck(
+            name="aligned_multirate_windows",
+            path=ALIGNED_CONTRACT_PATH,
+            required=False,
+            found=ALIGNED_CONTRACT_PATH.exists(),
+            note="Fallback/debug contract; в model_scoring не читается первым.",
+        ),
+        ArtifactCheck(
+            name="baseline_summary_metrics",
+            path=BASELINE_SUMMARY_PATH,
+            required=False,
+            found=BASELINE_SUMMARY_PATH.exists(),
+            note="Fallback baseline summary из notebook 02.",
+        ),
+    ]
+    baseline_summary = {
+        "source": "dashboard_replay_store",
+        "windows": {"micro_window_sec": 10, "macro_window_sec": 60},
+    }
+    return ContractBundle(
+        timeline=timeline,
+        baseline_summary=baseline_summary,
+        artifact_checks=checks,
+        kpi_columns=kpi_columns,
+        contract_path=model_dir / "dashboard_replay_store.csv",
+        summary_path=model_dir / "dashboard_model_report.json",
+    )
+
+
 def contract_stats(bundle: ContractBundle) -> dict[str, Any]:
     df = bundle.timeline
     summary = bundle.baseline_summary

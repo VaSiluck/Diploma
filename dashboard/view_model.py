@@ -20,7 +20,7 @@ STATE_LABELS = {
 CASE_LABELS = {
     "risk_escalation": "рост риска перед сбоем",
     "early_warning": "раннее предупреждение",
-    "degraded_fallback": "неполные KPI",
+    "degraded_fallback": "неполные модальности",
     "normal_reference": "нормальный эталон",
 }
 
@@ -84,6 +84,9 @@ class DashboardView:
     mode_note: str
     kpi_columns: list[str]
     baseline_table: pd.DataFrame
+    dashboard_report: dict[str, Any]
+    calibration_bins: pd.DataFrame
+    seed_metrics: pd.DataFrame
 
 
 def _safe_float(value: Any, default: float = 0.0) -> float:
@@ -153,6 +156,13 @@ def _apply_model_scores(df: pd.DataFrame, inference: InferenceBundleStatus) -> p
         "pred_state",
         "threshold_warning",
         "threshold_risk",
+        "baseline_warning_score",
+        "baseline_warning_model",
+        "baseline_risk_score",
+        "baseline_risk_model",
+        "label_anchor",
+        "anchor_reliability",
+        "score_source",
     ]
     model_cols = [col for col in model_cols if col in store.columns]
     model = store[model_cols].rename(
@@ -165,6 +175,7 @@ def _apply_model_scores(df: pd.DataFrame, inference: InferenceBundleStatus) -> p
             "pred_state": "model_pred_state",
             "threshold_warning": "model_threshold_warning",
             "threshold_risk": "model_threshold_risk",
+            "score_source": "model_score_source",
         }
     )
 
@@ -190,6 +201,9 @@ def _apply_model_scores(df: pd.DataFrame, inference: InferenceBundleStatus) -> p
         out.loc[has_model, "pred_state"] = derived[has_model]
 
     out["score_source"] = np.where(has_model, "model_store", "proxy_fallback")
+    if "model_score_source" in out.columns:
+        source = out["model_score_source"].fillna("").astype(str)
+        out.loc[has_model & source.ne(""), "score_source"] = source.loc[has_model & source.ne("")]
     out["confidence"] = np.where(has_model, np.maximum(out["warning_score"], out["risk_score"]), np.nan)
     return out
 
@@ -242,6 +256,9 @@ def build_dashboard_view(bundle: ContractBundle, inference: InferenceBundleStatu
         mode_note=mode_note,
         kpi_columns=bundle.kpi_columns,
         baseline_table=_build_baseline_table(bundle, inference),
+        dashboard_report=inference.dashboard_report,
+        calibration_bins=inference.calibration_bins,
+        seed_metrics=inference.seed_metrics,
     )
 
 
@@ -274,8 +291,8 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
             )
         if kind == "degraded_fallback":
             return (
-                f"{context}: часть KPI недоступна, поэтому replay явно показывает degraded/fallback context. "
-                "Сценарий проверяет, что интерфейс не скрывает неполноту модальностей."
+                f"{context}: одна из модальностей недоступна, поэтому replay явно показывает degraded/fallback context. "
+                "Сценарий проверяет, что интерфейс не скрывает неполное покрытие данных."
             )
         return (
             f"{context}: спокойный участок без target warning/risk и без выраженных лог-ошибок. "
@@ -334,38 +351,55 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
     )
     work["_cpu_usage"] = (100.0 - cpu_idle).clip(lower=0.0, upper=100.0)
 
+    if "score_source" in work.columns and work["score_source"].eq("model_store").any():
+        split_series = work["split"] if "split" in work.columns else pd.Series("test", index=work.index)
+        demo_pool = work.loc[work["score_source"].eq("model_store") & split_series.eq("test")].copy()
+    elif "split" in work.columns and work["split"].eq("test").any():
+        demo_pool = work.loc[work["split"].eq("test")].copy()
+    else:
+        demo_pool = work.copy()
+    if demo_pool.empty:
+        demo_pool = work.copy()
+    anchor_available = (
+        demo_pool["event_anchor"].notna()
+        if "event_anchor" in demo_pool.columns
+        else demo_pool.get("fail_start", pd.Series(pd.NaT, index=demo_pool.index)).notna()
+    )
+
     add_case(
         "risk_escalation",
-        work.loc[
-            work["_risk_score"].ge(0.70)
-            & work["_both_modalities"].eq(1)
-            & work["fail_start"].notna()
+        demo_pool.loc[
+            demo_pool["_risk_score"].ge(0.70)
+            & demo_pool["_both_modalities"].eq(1)
+            & anchor_available
         ],
         ["_run_gain", "_risk_score", "_minutes_before_fail", "macro_error_count", "macro_warn_count"],
         [False, False, True, False, False],
     )
     add_case(
         "early_warning",
-        work.loc[
-            work["_risk_score"].between(0.30, 0.70, inclusive="left")
-            & work["_both_modalities"].eq(1)
-            & (pred_state.eq("warning") | work["y_warning"].eq(1))
-            & work["fail_start"].notna()
+        demo_pool.loc[
+            demo_pool["_risk_score"].between(0.30, 0.70, inclusive="left")
+            & demo_pool["_both_modalities"].eq(1)
+            & (
+                demo_pool.get("pred_state", pd.Series("normal", index=demo_pool.index)).fillna("normal").astype(str).eq("warning")
+                | demo_pool["y_warning"].eq(1)
+            )
+            & anchor_available
         ],
         ["_minutes_before_fail", "_warning_score", "macro_warn_count", "window_ts"],
         [False, False, False, True],
     )
     add_case(
         "degraded_fallback",
-        work.loc[
-            log_available
-            & (kpi_available.eq(False) | work.get("has_both_modalities", pd.Series(0, index=work.index)).eq(0))
+        demo_pool.loc[
+            demo_pool.get("has_both_modalities", pd.Series(0, index=demo_pool.index)).eq(0)
         ],
         ["_risk_score", "macro_error_count", "macro_warn_count", "window_ts"],
         [False, False, False, True],
     )
 
-    run_stats = work.groupby("run_id").agg(
+    run_stats = demo_pool.groupby("run_id").agg(
         n=("run_id", "size"),
         max_risk=("_risk_score", "max"),
         mean_risk=("_risk_score", "mean"),
@@ -391,15 +425,15 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
     normal_frame = pd.DataFrame()
     if not normal_runs.empty:
         normal_run_id = str(normal_runs.index[0])
-        normal_run = work.loc[work["run_id"].eq(normal_run_id)].sort_values("window_ts")
+        normal_run = demo_pool.loc[demo_pool["run_id"].eq(normal_run_id)].sort_values("window_ts")
         normal_frame = normal_run.iloc[[len(normal_run) // 2]].copy()
     else:
-        normal_frame = work.loc[
-            work["_risk_score"].le(0.15)
-            & work["y_warning"].eq(0)
-            & work["y_risk"].eq(0)
-            & log_available
-            & kpi_available
+        normal_frame = demo_pool.loc[
+            demo_pool["_risk_score"].le(0.15)
+            & demo_pool["y_warning"].eq(0)
+            & demo_pool["y_risk"].eq(0)
+            & demo_pool["log_available"].eq(1)
+            & demo_pool["kpi_available"].eq(1)
         ]
     add_case(
         "normal_reference",
@@ -636,6 +670,31 @@ def build_kpi_evidence(run_df: pd.DataFrame, kpi_columns: list[str], current_idx
         return []
     current_idx = int(np.clip(current_idx, 0, max(len(run_df) - 1, 0)))
     items: list[dict[str, Any]] = []
+    compact_specs = [
+        ("kpi_dashboard_cpu_pct", "CPU", "CPU", "%", "#2563eb", "агрегированная загрузка CPU"),
+        ("kpi_dashboard_memory_pct", "Память", "Memory", "%", "#7c3aed", "агрегированная занятость памяти"),
+        ("kpi_dashboard_disk_pct", "Диск", "Disk", "%", "#f59e0b", "агрегированная активность диска"),
+        ("kpi_dashboard_network_mbps", "Сеть", "Network", "MB/s", "#0f766e", "агрегированный сетевой поток"),
+    ]
+    if any(col in run_df.columns for col, *_ in compact_specs):
+        for col, title, label, unit, accent, subtitle in compact_specs:
+            if col not in run_df.columns:
+                continue
+            item = _make_kpi_overview_item(
+                title=title,
+                label=label,
+                y=pd.to_numeric(run_df[col], errors="coerce"),
+                current_idx=current_idx,
+                unit=unit,
+                accent=accent,
+                subtitle=subtitle,
+                columns=[col],
+                run_df=run_df,
+            )
+            if item:
+                items.append(item)
+        if items:
+            return items[:top_n]
 
     cpu_idle = _aggregate_kpi_series(
         run_df,

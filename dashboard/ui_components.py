@@ -19,6 +19,13 @@ STATE_COLORS = {
     "risk": "#dc2626",
 }
 
+ANCHOR_LABELS = {
+    "explicit_raw_log_keyword_or_severity": ("явный лог-якорь", "#2563eb"),
+    "run_end_proxy": ("proxy по концу run", "#7c3aed"),
+    "run_end_proxy_no_log_events": ("proxy по концу run", "#7c3aed"),
+    "normal_no_failure": ("нормальный запуск", "#15803d"),
+}
+
 
 def safe_float(value: Any, default: float = 0.0) -> float:
     try:
@@ -28,6 +35,42 @@ def safe_float(value: Any, default: float = 0.0) -> float:
     if not np.isfinite(out):
         return default
     return out
+
+
+def format_score(score: float, digits: int = 2) -> str:
+    score = float(np.clip(safe_float(score, 0.0), 0.0, 1.0))
+    if score >= 1.0 - 0.5 * 10 ** (-digits):
+        return f">{1.0 - 10 ** (-digits):.{digits}f}"
+    if score <= 0.5 * 10 ** (-digits):
+        return f"<{10 ** (-digits):.{digits}f}"
+    return f"{score:.{digits}f}"
+
+
+def format_metric(value: Any, digits: int = 3, empty: str = "n/a") -> str:
+    value = safe_float(value, np.nan)
+    if not np.isfinite(value):
+        return empty
+    return f"{value:.{digits}f}"
+
+
+def format_delta(value: Any, digits: int = 3) -> str:
+    value = safe_float(value, np.nan)
+    if not np.isfinite(value):
+        return "n/a"
+    sign = "+" if value > 0 else ""
+    return f"{sign}{value:.{digits}f}"
+
+
+def anchor_badge_parts(anchor_policy: Any) -> tuple[str, str]:
+    return ANCHOR_LABELS.get(str(anchor_policy or ""), ("неизвестный якорь", "#64748b"))
+
+
+def event_anchor_text(row: pd.Series) -> str:
+    policy = str(row.get("anchor_policy", ""))
+    scenario_type = str(row.get("scenario_type", ""))
+    if policy == "normal_no_failure" or scenario_type == "normal":
+        return "Нет сбоя"
+    return "Якорь события"
 
 
 def state_from_score(score: float) -> str:
@@ -553,6 +596,143 @@ def inject_css() -> str:
         text-align:right;
         font-weight:700;
     }
+    .honest-card {
+        border:1px solid #e6edf5;
+        border-radius:8px;
+        background:#fff;
+        overflow:hidden;
+    }
+    .honest-row,
+    .honest-head {
+        display:grid;
+        grid-template-columns:minmax(0, 1.2fr) 46px 54px 44px 50px 58px;
+        gap:6px;
+        align-items:center;
+        padding:8px 8px;
+        border-bottom:1px solid #eef3f8;
+        font-size:11.5px;
+    }
+    .honest-head {
+        background:#f8fafc;
+        color:#536176;
+        font-weight:800;
+    }
+    .honest-row:last-child {
+        border-bottom:none;
+    }
+    .honest-model {
+        font-weight:760;
+        color:#102033;
+        min-width:0;
+        overflow-wrap:anywhere;
+    }
+    .honest-num {
+        text-align:right;
+        font-variant-numeric:tabular-nums;
+        color:#102033;
+        font-weight:700;
+    }
+    .honest-muted {
+        color:#64748b;
+        font-size:11.5px;
+        line-height:1.32;
+        padding:8px 9px;
+        background:#fbfdff;
+        border-top:1px solid #eef3f8;
+    }
+    .delta-good { color:#15803d; }
+    .delta-bad { color:#dc2626; }
+    .delta-even { color:#64748b; }
+    .verdict-badge {
+        display:inline-flex;
+        align-items:center;
+        border-radius:999px;
+        padding:3px 8px;
+        font-size:11.5px;
+        font-weight:800;
+        border:1px solid #e2e8f0;
+        background:#f8fafc;
+        color:#334155;
+        margin-bottom:7px;
+    }
+    .verdict-bad {
+        border-color:#fecaca;
+        background:#fff1f2;
+        color:#dc2626;
+    }
+    .verdict-good {
+        border-color:#bbf7d0;
+        background:#f0fdf4;
+        color:#15803d;
+    }
+    .verdict-even {
+        border-color:#dbe5f1;
+        background:#f8fafc;
+        color:#475569;
+    }
+    .window-score-box {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+        margin-top:9px;
+    }
+    .window-score {
+        border:1px solid #e6edf5;
+        border-radius:8px;
+        padding:8px;
+        background:#fbfdff;
+    }
+    .window-score-label {
+        color:#64748b;
+        font-size:11.5px;
+    }
+    .window-score-value {
+        color:#102033;
+        font-size:18px;
+        line-height:1.1;
+        font-weight:850;
+        margin-top:3px;
+        font-variant-numeric:tabular-nums;
+    }
+    .reliability-grid {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+    }
+    .reliability-tile {
+        border:1px solid #e6edf5;
+        border-radius:8px;
+        background:#fff;
+        padding:9px;
+    }
+    .reliability-label {
+        font-size:12px;
+        color:#64748b;
+    }
+    .reliability-value {
+        font-size:17px;
+        font-weight:850;
+        color:#102033;
+        margin-top:2px;
+    }
+    .anchor-pill {
+        display:inline-flex;
+        align-items:center;
+        gap:6px;
+        border-radius:999px;
+        padding:4px 9px;
+        font-size:12px;
+        font-weight:750;
+        background:#f8fafc;
+        border:1px solid #dbe5f1;
+        color:#334155;
+    }
+    .anchor-dot {
+        width:7px;
+        height:7px;
+        border-radius:50%;
+        display:inline-block;
+    }
     @media (max-width: 1100px) {
         .header-grid {
             grid-template-columns:1fr;
@@ -731,7 +911,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
             x=[current_ts],
             y=[current_score],
             mode="markers+text",
-            text=[f"{current_score:.2f}"],
+            text=[format_score(current_score)],
             textposition="middle right",
             name="Выбранное окно",
             marker={"size": 12, "color": "#ffffff", "line": {"color": "#0f73e8", "width": 2.4}},
@@ -750,15 +930,18 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
         font={"size": 10, "color": "#ffffff"},
     )
 
-    fail_ts = pd.to_datetime(cur.get("fail_start"), utc=True, errors="coerce")
-    if pd.notna(fail_ts):
-        fig.add_vline(x=pd.Timestamp(fail_ts), line_color="#7c3aed", line_width=1.2, line_dash="dash")
+    anchor_policy = str(cur.get("anchor_policy", ""))
+    anchor_ts = pd.to_datetime(cur.get("event_anchor", cur.get("fail_start")), utc=True, errors="coerce")
+    if anchor_policy != "normal_no_failure" and pd.notna(anchor_ts):
+        anchor_label, anchor_color = anchor_badge_parts(anchor_policy)
+        line_dash = "solid" if anchor_policy == "explicit_raw_log_keyword_or_severity" else "dash"
+        fig.add_vline(x=pd.Timestamp(anchor_ts), line_color=anchor_color, line_width=1.2, line_dash=line_dash)
         fig.add_annotation(
-            x=pd.Timestamp(fail_ts),
+            x=pd.Timestamp(anchor_ts),
             y=0.98,
-            text=f"Начало сбоя<br>{pd.Timestamp(fail_ts).strftime('%H:%M')}",
+            text=f"Якорь события<br>{anchor_label}<br>{pd.Timestamp(anchor_ts).strftime('%H:%M')}",
             showarrow=False,
-            font={"size": 11, "color": "#7c3aed"},
+            font={"size": 10, "color": anchor_color},
             yanchor="bottom",
         )
 
@@ -962,6 +1145,184 @@ def render_baseline_table_html(table: pd.DataFrame, max_rows: int = 6) -> str:
         "<div class='baseline-head'><div>Модель</div><div>Цель</div><div>AP</div><div>ROC-AUC</div></div>"
         f"{''.join(rows)}"
         "</div>"
+    )
+
+
+def _diagnostic_for_target(report: dict[str, Any], target: str) -> dict[str, Any]:
+    for row in report.get("baseline_diagnostics", []) if isinstance(report, dict) else []:
+        if str(row.get("target")) == target:
+            return dict(row)
+    return {}
+
+
+def _derive_diagnostic_from_table(table: pd.DataFrame, target: str) -> dict[str, Any]:
+    if table.empty:
+        return {}
+    rows = table.copy()
+    if "status" in rows.columns:
+        rows = rows.loc[rows["status"].fillna("ok").eq("ok")].copy()
+    if "slice" in rows.columns:
+        rows = rows.loc[rows["slice"].fillna("all").eq("all")].copy()
+    rows = rows.loc[rows["target"].astype(str).eq(target)].copy()
+    if rows.empty:
+        return {}
+    central_rows = rows.loc[rows["baseline"].astype(str).eq("central-fusion-model")].copy()
+    non_central = rows.loc[~rows["baseline"].astype(str).eq("central-fusion-model")].copy()
+    if central_rows.empty:
+        return {}
+    central = central_rows.iloc[0]
+    best = non_central.sort_values("average_precision", ascending=False).iloc[0] if not non_central.empty else None
+    central_ap = safe_float(central.get("average_precision"), np.nan)
+    best_ap = safe_float(best.get("average_precision"), np.nan) if best is not None else np.nan
+    delta = central_ap - best_ap if np.isfinite(central_ap) and np.isfinite(best_ap) else np.nan
+    verdict = "хуже baseline" if np.isfinite(delta) and delta < -0.02 else ("лучше baseline" if np.isfinite(delta) and delta > 0.02 else "паритет")
+    return {
+        "target": target,
+        "central_average_precision": central_ap,
+        "central_roc_auc": safe_float(central.get("roc_auc"), np.nan),
+        "central_f1": safe_float(central.get("f1"), np.nan),
+        "central_recall": safe_float(central.get("recall"), np.nan),
+        "random_reference_ap": safe_float(central.get("prevalence"), np.nan),
+        "best_baseline": str(best.get("baseline", "baseline")) if best is not None else "baseline",
+        "best_baseline_average_precision": best_ap,
+        "best_baseline_roc_auc": safe_float(best.get("roc_auc"), np.nan) if best is not None else np.nan,
+        "best_baseline_f1": safe_float(best.get("f1"), np.nan) if best is not None else np.nan,
+        "best_baseline_recall": safe_float(best.get("recall"), np.nan) if best is not None else np.nan,
+        "delta_vs_best_baseline_ap": delta,
+        "verdict": verdict,
+    }
+
+
+def render_honest_baseline_card_html(
+    table: pd.DataFrame,
+    report: dict[str, Any],
+    target: str,
+    current: pd.Series | None = None,
+) -> str:
+    diag = _diagnostic_for_target(report, target) or _derive_diagnostic_from_table(table, target)
+    if not diag:
+        return "<div class='explain-box'>Baseline-сравнение недоступно.</div>"
+
+    target_short = "risk" if target == "y_risk" else "warning"
+    target_label = "risk" if target == "y_risk" else "warning"
+    delta = safe_float(diag.get("delta_vs_best_baseline_ap"), np.nan)
+    verdict = str(diag.get("verdict", "паритет"))
+    verdict_cls = "verdict-bad" if "хуже" in verdict else ("verdict-good" if "лучше" in verdict else "verdict-even")
+    delta_cls = "delta-bad" if np.isfinite(delta) and delta < -0.02 else ("delta-good" if np.isfinite(delta) and delta > 0.02 else "delta-even")
+
+    rows = [
+        (
+            "random / prevalence",
+            diag.get("random_reference_ap"),
+            np.nan,
+            np.nan,
+            np.nan,
+            np.nan,
+            "delta-even",
+        ),
+        (
+            str(diag.get("best_baseline", "best baseline")),
+            diag.get("best_baseline_average_precision"),
+            diag.get("best_baseline_roc_auc"),
+            diag.get("best_baseline_f1"),
+            diag.get("best_baseline_recall"),
+            0.0,
+            "delta-even",
+        ),
+        (
+            "central fusion",
+            diag.get("central_average_precision"),
+            diag.get("central_roc_auc"),
+            diag.get("central_f1"),
+            diag.get("central_recall"),
+            delta,
+            delta_cls,
+        ),
+    ]
+
+    html_rows = []
+    for model, ap, roc, f1, recall, row_delta, cls in rows:
+        html_rows.append(
+            "<div class='honest-row'>"
+            f"<div class='honest-model'>{html.escape(model)}</div>"
+            f"<div class='honest-num'>{format_metric(ap)}</div>"
+            f"<div class='honest-num'>{format_metric(roc)}</div>"
+            f"<div class='honest-num'>{format_metric(f1)}</div>"
+            f"<div class='honest-num'>{format_metric(recall)}</div>"
+            f"<div class='honest-num {cls}'>{format_delta(row_delta) if np.isfinite(safe_float(row_delta, np.nan)) else '—'}</div>"
+            "</div>"
+        )
+
+    current_html = ""
+    if current is not None:
+        central_col = "risk_score" if target == "y_risk" else "warning_score"
+        baseline_col = f"baseline_{target_short}_score"
+        baseline_model_col = f"baseline_{target_short}_model"
+        central_score = safe_float(current.get(central_col), np.nan)
+        baseline_score = safe_float(current.get(baseline_col), np.nan)
+        if np.isfinite(central_score) and np.isfinite(baseline_score):
+            baseline_model = str(current.get(baseline_model_col, diag.get("best_baseline", "baseline")))
+            current_html = (
+                "<div class='window-score-box'>"
+                "<div class='window-score'>"
+                "<div class='window-score-label'>central score окна</div>"
+                f"<div class='window-score-value'>{format_score(central_score)}</div>"
+                "</div>"
+                "<div class='window-score'>"
+                f"<div class='window-score-label'>{html.escape(baseline_model)} score окна</div>"
+                f"<div class='window-score-value'>{format_score(baseline_score)}</div>"
+                "</div>"
+                "</div>"
+            )
+
+    verdict_message = report.get("training_verdict", {}).get("message", "") if isinstance(report, dict) else ""
+    if not verdict_message:
+        verdict_message = "Сравнение строится по test split; положительный claim допустим только при устойчивом выигрыше AP."
+
+    return (
+        f"<span class='verdict-badge {verdict_cls}'>{html.escape(verdict)}</span>"
+        "<div class='honest-card'>"
+        "<div class='honest-head'><div>Модель</div><div>AP</div><div>ROC-AUC</div><div>F1</div><div>Recall</div><div>Δ AP</div></div>"
+        f"{''.join(html_rows)}"
+        f"<div class='honest-muted'>Цель: <strong>{html.escape(target_label)}</strong>. {html.escape(verdict_message)}</div>"
+        "</div>"
+        f"{current_html}"
+    )
+
+
+def render_reliability_html(report: dict[str, Any], calibration_bins: pd.DataFrame) -> str:
+    diagnostics = report.get("baseline_diagnostics", []) if isinstance(report, dict) else []
+    if not diagnostics:
+        return "<div class='explain-box'>Диагностика надежности недоступна.</div>"
+
+    ece_by_target: dict[str, float] = {}
+    if not calibration_bins.empty and {"target", "n", "abs_calibration_error"}.issubset(calibration_bins.columns):
+        for target, group in calibration_bins.groupby("target"):
+            n = pd.to_numeric(group["n"], errors="coerce").fillna(0)
+            err = pd.to_numeric(group["abs_calibration_error"], errors="coerce").fillna(0)
+            denom = float(n.sum())
+            if denom > 0:
+                ece_by_target[str(target)] = float((n * err).sum() / denom)
+
+    tiles = []
+    for row in diagnostics:
+        target = str(row.get("target"))
+        label = "Warning" if target == "y_warning" else "Risk"
+        ap = safe_float(row.get("central_average_precision"), np.nan)
+        random_ap = safe_float(row.get("random_reference_ap"), np.nan)
+        roc = safe_float(row.get("central_roc_auc"), np.nan)
+        ece = ece_by_target.get(target, np.nan)
+        tiles.append(
+            "<div class='reliability-tile'>"
+            f"<div class='reliability-label'>{html.escape(label)} AP vs prevalence</div>"
+            f"<div class='reliability-value'>{format_metric(ap)} / {format_metric(random_ap)}</div>"
+            f"<div class='small-muted'>ROC-AUC {format_metric(roc)} · calib.err {format_metric(ece)}</div>"
+            "</div>"
+        )
+
+    return (
+        f"<div class='reliability-grid'>{''.join(tiles)}</div>"
+        "<div class='honest-muted'>Score показывает ранжирование модели и не является откалиброванной вероятностью события.</div>"
     )
 
 

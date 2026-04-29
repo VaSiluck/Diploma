@@ -15,17 +15,22 @@ if str(APP_ROOT) not in sys.path:
 from dashboard.contract_pipeline import (
     DataContractError,
     checks_to_frame,
+    load_compact_replay_bundle,
     load_contract_bundle,
 )
 from dashboard.inference import artifact_checks_frame, inspect_inference_bundle
 from dashboard.ui_components import (
+    anchor_badge_parts,
     build_fusion_figure,
     build_kpi_sparkline,
     build_risk_figure,
     chip_row,
+    event_anchor_text,
     inject_css,
-    render_baseline_table_html,
+    render_honest_baseline_card_html,
     render_log_table_html,
+    render_reliability_html,
+    format_score,
     safe_float,
     state_from_score,
     top_card,
@@ -123,7 +128,7 @@ def render_header(case: pd.Series, current: pd.Series, step_idx: int, total_step
             (
                 "<div class='top-card'>"
                 "<div class='top-label'>Оценка риска</div>"
-                f"<div class='top-risk' style='color:{risk_color}'>{risk:.2f}</div>"
+                f"<div class='top-risk' style='color:{risk_color}'>{format_score(risk)}</div>"
                 "<div class='top-sub'>текущий шаг</div>"
                 "</div>"
             ),
@@ -157,7 +162,7 @@ def render_controls(cases: pd.DataFrame, timeline: pd.DataFrame) -> tuple[pd.Ser
             short_labels = {
                 "risk_escalation": "рост риска",
                 "early_warning": "ранний сигнал",
-                "degraded_fallback": "неполные KPI",
+                "degraded_fallback": "неполные данные",
                 "normal_reference": "норма",
             }
             label_by_case = {
@@ -230,13 +235,19 @@ def render_risk_panel(run_df: pd.DataFrame, step_idx: int, preview: bool) -> Non
         fig = build_risk_figure(run_df, step_idx, preview=preview)
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         cur = run_df.iloc[step_idx]
-        fail_ts = pd.to_datetime(cur.get("fail_start"), utc=True, errors="coerce")
+        anchor_ts = pd.to_datetime(cur.get("event_anchor", cur.get("fail_start")), utc=True, errors="coerce")
+        anchor_title = event_anchor_text(cur)
+        anchor_value = "n/a"
+        if anchor_title != "Нет сбоя" and pd.notna(anchor_ts):
+            anchor_value = pd.Timestamp(anchor_ts).strftime("%H:%M:%S")
+        anchor_label, _ = anchor_badge_parts(cur.get("anchor_policy"))
         st.markdown(
             chip_row(
                 [
                     ("Логи", "доступны" if int(safe_float(cur.get("log_available"), 0)) else "нет"),
                     ("KPI", "доступны" if int(safe_float(cur.get("kpi_available"), 0)) else "нет"),
-                    ("Начало сбоя", pd.Timestamp(fail_ts).strftime("%H:%M:%S") if pd.notna(fail_ts) else "n/a"),
+                    (anchor_title, anchor_value),
+                    ("Provenance", anchor_label),
                     ("Режим оценки", "proxy-preview" if preview else str(cur.get("score_source", "model_store"))),
                 ]
             ),
@@ -340,19 +351,27 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
     kpi_available = bool(int(safe_float(current.get("kpi_available", 0), 0)))
     log_share = safe_float(current.get("fusion_gate", 0.5), 0.5)
     kpi_share = 0.0 if not kpi_available else max(0.0, 1.0 - log_share)
+    anchor_label, anchor_color = anchor_badge_parts(current.get("anchor_policy"))
 
     with st.container(border=True):
         st.markdown("<div class='section-title'>Сводка по риску</div>", unsafe_allow_html=True)
         rows = [
-            ("Текущая оценка риска", f"{risk:.2f}"),
-            ("Warning score", f"{warning:.2f}"),
+            ("Текущая оценка риска", format_score(risk)),
+            ("Warning score", format_score(warning)),
             ("Состояние", STATE_LABELS.get(state, state)),
-            ("Уверенность", "n/a" if view.mode != "model_scoring" else f"{safe_float(current.get('confidence', 0.0)):.2f}"),
+            ("Уверенность", "n/a" if view.mode != "model_scoring" else format_score(safe_float(current.get("confidence", 0.0)))),
+            ("Разметка", anchor_label),
             ("Режим", "Preview" if view.mode != "model_scoring" else "Central fusion"),
         ]
         html_rows = "".join(
             f"<div class='side-row'><div class='side-k'>{html.escape(k)}</div><div class='side-v'>{html.escape(v)}</div></div>"
             for k, v in rows
+        )
+        html_rows += (
+            "<div class='anchor-pill'>"
+            f"<span class='anchor-dot' style='background:{anchor_color}'></span>"
+            f"{html.escape(event_anchor_text(current))}: {html.escape(anchor_label)}"
+            "</div>"
         )
         st.markdown(html_rows, unsafe_allow_html=True)
 
@@ -389,25 +408,25 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
 
     with st.container(border=True):
         st.markdown("<div class='section-title'>Сравнение с baseline</div>", unsafe_allow_html=True)
-        baseline = view.baseline_table.copy()
-        if baseline.empty:
-            st.info("Baseline-сводка недоступна.")
-        else:
-            show = baseline.loc[baseline.get("target", pd.Series(dtype=str)).astype(str).eq("y_risk")].copy()
-            if show.empty:
-                show = baseline.copy()
-            rename = {
-                "baseline": "Модель",
-                "target": "Цель",
-                "average_precision": "AP",
-                "roc_auc": "ROC-AUC",
-                "f1": "F1",
-            }
-            show = show.rename(columns=rename)
-            keep = [col for col in ["Модель", "Цель", "AP", "ROC-AUC", "F1"] if col in show.columns]
-            st.markdown(render_baseline_table_html(show[keep], max_rows=6), unsafe_allow_html=True)
+        target = st.segmented_control(
+            "Цель baseline",
+            ["y_risk", "y_warning"],
+            default="y_risk",
+            format_func=lambda value: "risk" if value == "y_risk" else "warning",
+            key="baseline_target",
+            label_visibility="collapsed",
+            width="stretch",
+        )
+        st.markdown(
+            render_honest_baseline_card_html(view.baseline_table.copy(), view.dashboard_report, str(target), current),
+            unsafe_allow_html=True,
+        )
         if inference.missing_required:
             st.caption("Central fusion не сравнивается с baseline, пока отсутствует compact model bundle.")
+
+    with st.container(border=True):
+        st.markdown("<div class='section-title'>Надежность модели</div>", unsafe_allow_html=True)
+        st.markdown(render_reliability_html(view.dashboard_report, view.calibration_bins), unsafe_allow_html=True)
 
 
 def render_about(bundle, inference, view) -> None:
@@ -438,6 +457,18 @@ def render_about(bundle, inference, view) -> None:
             st.markdown("#### Dry-run model config")
             st.json(debug, expanded=False)
 
+        if view.dashboard_report:
+            st.markdown("#### Dashboard diagnostics")
+            st.json(view.dashboard_report, expanded=False)
+
+        if not view.seed_metrics.empty:
+            st.markdown("#### Seed metrics")
+            st.dataframe(view.seed_metrics, use_container_width=True, hide_index=True)
+
+        if not view.calibration_bins.empty:
+            st.markdown("#### Calibration bins")
+            st.dataframe(view.calibration_bins, use_container_width=True, hide_index=True)
+
         if inference.model_card:
             st.markdown("#### Model card")
             st.markdown(inference.model_card)
@@ -453,8 +484,11 @@ def main() -> None:
     st.markdown(inject_css(), unsafe_allow_html=True)
 
     try:
-        bundle = _load_contract_cached()
         inference = _inspect_inference_cached()
+        if inference.ready and not inference.dashboard_replay_store.empty:
+            bundle = load_compact_replay_bundle(inference.dashboard_replay_store, inference.model_dir)
+        else:
+            bundle = _load_contract_cached()
     except DataContractError as exc:
         st.error(f"Ошибка data contract: {exc}")
         st.stop()
@@ -474,12 +508,13 @@ def main() -> None:
     render_header(case, current, step_idx, len(run_df), view.mode)
     case, run_df, step_idx = render_controls(view.cases, view.timeline)
     current = run_df.iloc[step_idx]
+    source_label = "dashboard_replay_store" if bundle.contract_path.name == "dashboard_replay_store.csv" else "raw_multirate contract"
     st.markdown(
         chip_row(
             [
                 ("Кейс", str(case["label"])),
                 ("run_id", str(case["run_id"])),
-                ("Источник", "raw_multirate contract"),
+                ("Источник", source_label),
                 ("Bundle", "готов" if inference.ready else "не обучен"),
             ]
         ),
