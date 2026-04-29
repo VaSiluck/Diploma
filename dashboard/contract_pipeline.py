@@ -14,7 +14,17 @@ RAW_DATA_ROOT = APP_ROOT / "raw_data"
 RAW_MULTIRATE_DIR = APP_ROOT / "outputs" / "raw_multirate"
 RAW_CENTRAL_MODEL_DIR = APP_ROOT / "outputs" / "raw_central_model"
 
-ALIGNED_CONTRACT_PATH = RAW_MULTIRATE_DIR / "aligned_multirate_windows.csv"
+def _first_existing_path(*paths: Path) -> Path:
+    for path in paths:
+        if path.exists():
+            return path
+    return paths[0]
+
+
+ALIGNED_CONTRACT_PATH = _first_existing_path(
+    RAW_MULTIRATE_DIR / "aligned_multirate_windows.csv.gz",
+    RAW_MULTIRATE_DIR / "aligned_multirate_windows.csv",
+)
 BASELINE_SUMMARY_PATH = RAW_MULTIRATE_DIR / "baseline_summary_metrics.json"
 
 CONTRACT_ID_COLUMNS = [
@@ -414,7 +424,7 @@ def load_compact_replay_bundle(
     model_dir: Path = RAW_CENTRAL_MODEL_DIR,
 ) -> ContractBundle:
     if replay_store.empty:
-        raise DataContractError("dashboard_replay_store.csv is empty.")
+        raise DataContractError("dashboard_replay_store is empty.")
 
     timeline = replay_store.copy()
     if "state" not in timeline.columns:
@@ -431,7 +441,7 @@ def load_compact_replay_bundle(
     checks = [
         ArtifactCheck(
             name="dashboard_replay_store",
-            path=model_dir / "dashboard_replay_store.csv",
+            path=_first_existing_path(model_dir / "dashboard_replay_store.csv.gz", model_dir / "dashboard_replay_store.csv"),
             required=True,
             found=True,
             note="Compact test/model-store окна из notebook 03.",
@@ -460,8 +470,8 @@ def load_compact_replay_bundle(
         baseline_summary=baseline_summary,
         artifact_checks=checks,
         kpi_columns=kpi_columns,
-        contract_path=model_dir / "dashboard_replay_store.csv",
-        summary_path=model_dir / "dashboard_model_report.json",
+        contract_path=_first_existing_path(model_dir / "dashboard_replay_store.csv.gz", model_dir / "dashboard_replay_store.csv"),
+        summary_path=_first_existing_path(model_dir / "model_report.json", model_dir / "dashboard_model_report.json"),
     )
 
 

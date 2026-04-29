@@ -508,7 +508,7 @@ def main() -> None:
     render_header(case, current, step_idx, len(run_df), view.mode)
     case, run_df, step_idx = render_controls(view.cases, view.timeline)
     current = run_df.iloc[step_idx]
-    source_label = "dashboard_replay_store" if bundle.contract_path.name == "dashboard_replay_store.csv" else "raw_multirate contract"
+    source_label = "dashboard_replay_store" if bundle.contract_path.name.startswith("dashboard_replay_store") else "raw_multirate contract"
     st.markdown(
         chip_row(
             [

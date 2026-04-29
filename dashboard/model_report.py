@@ -20,6 +20,23 @@ TARGET_SHORT_NAMES = {
 
 CENTRAL_MODEL_NAME = "central-fusion-model"
 MIN_MEAN_AP_IMPROVEMENT = 0.02
+MODEL_REPORT_FILE = "model_report.json"
+REPLAY_STORE_FILE = "dashboard_replay_store.csv.gz"
+
+
+def _normalize_baseline_comparison(table: pd.DataFrame) -> pd.DataFrame:
+    if table.empty:
+        return pd.DataFrame()
+    out = table.copy()
+    if "baseline" not in out.columns and "model" in out.columns:
+        out["baseline"] = out["model"]
+    if "model" not in out.columns and "baseline" in out.columns:
+        out["model"] = out["baseline"]
+    if "baseline" not in out.columns:
+        return pd.DataFrame()
+    out["baseline"] = out["baseline"].replace({"central_fusion": CENTRAL_MODEL_NAME})
+    out["model"] = out["model"].replace({"central_fusion": CENTRAL_MODEL_NAME})
+    return out
 
 
 def _safe_float(value: Any, default: float | None = None) -> float | None:
@@ -104,7 +121,9 @@ def build_baseline_diagnostics(baseline_comparison: pd.DataFrame) -> list[dict[s
     if baseline_comparison.empty:
         return []
 
-    table = baseline_comparison.copy()
+    table = _normalize_baseline_comparison(baseline_comparison)
+    if table.empty:
+        return []
     if "status" in table.columns:
         table = table.loc[table["status"].fillna("ok").eq("ok")].copy()
     if "slice" in table.columns:
@@ -149,6 +168,7 @@ def build_baseline_diagnostics(baseline_comparison: pd.DataFrame) -> list[dict[s
                 "target": target,
                 "target_short": TARGET_SHORT_NAMES[target],
                 "central_model": CENTRAL_MODEL_NAME,
+                "comparison_basis": "single_run",
                 "central_average_precision": central_ap,
                 "central_roc_auc": _safe_float(central.get("roc_auc")),
                 "central_f1": _safe_float(central.get("f1")),
@@ -167,6 +187,92 @@ def build_baseline_diagnostics(baseline_comparison: pd.DataFrame) -> list[dict[s
             }
         )
     return rows
+
+
+def build_seed_mean_baseline_diagnostics(
+    seed_metrics: pd.DataFrame,
+    baseline_comparison: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    if seed_metrics.empty or "seed" not in seed_metrics.columns:
+        return build_baseline_diagnostics(baseline_comparison)
+
+    table = _normalize_baseline_comparison(baseline_comparison)
+    if table.empty:
+        return []
+    if "status" in table.columns:
+        table = table.loc[table["status"].fillna("ok").eq("ok")].copy()
+    if "slice" in table.columns:
+        table = table.loc[table["slice"].fillna("all").eq("all")].copy()
+
+    seed_table = seed_metrics.copy()
+    if "slice" in seed_table.columns:
+        seed_table = seed_table.loc[seed_table["slice"].fillna("all").eq("all")].copy()
+    if "primary_experiment" in seed_table.columns:
+        seed_table = seed_table.loc[seed_table["primary_experiment"].astype(bool)].copy()
+    if "experiment" in seed_table.columns:
+        seed_table = seed_table.loc[seed_table["experiment"].astype(str).eq("central_fusion")].copy()
+    if seed_table.empty:
+        return build_baseline_diagnostics(baseline_comparison)
+
+    rows: list[dict[str, Any]] = []
+    metric_cols = ["average_precision", "roc_auc", "f1", "precision", "recall", "threshold", "prevalence"]
+    for col in metric_cols:
+        if col in seed_table.columns:
+            seed_table[col] = pd.to_numeric(seed_table[col], errors="coerce")
+    for target in TARGET_SCORE_COLUMNS:
+        central_seed_rows = seed_table.loc[seed_table["target"].astype(str).eq(target)].copy()
+        target_rows = table.loc[table["target"].astype(str).eq(target)].copy()
+        non_central = target_rows.loc[~target_rows["baseline"].astype(str).eq(CENTRAL_MODEL_NAME)].copy()
+        if central_seed_rows.empty or non_central.empty:
+            continue
+
+        best_baseline = non_central.sort_values("average_precision", ascending=False).iloc[0]
+        central_ap = _safe_float(central_seed_rows["average_precision"].mean())
+        central_ap_std = _safe_float(central_seed_rows["average_precision"].std(ddof=1))
+        best_ap = _safe_float(best_baseline.get("average_precision"))
+        delta_vs_best = None if central_ap is None or best_ap is None else central_ap - best_ap
+        prevalence = (
+            _safe_float(central_seed_rows["prevalence"].mean(), _safe_float(best_baseline.get("prevalence"), 0.0))
+            if "prevalence" in central_seed_rows.columns
+            else _safe_float(best_baseline.get("prevalence"), 0.0)
+        )
+        delta_vs_random = None if central_ap is None or prevalence is None else central_ap - prevalence
+        if delta_vs_best is None:
+            verdict = "нет baseline"
+        elif delta_vs_best >= MIN_MEAN_AP_IMPROVEMENT:
+            verdict = "лучше baseline"
+        elif delta_vs_best <= -MIN_MEAN_AP_IMPROVEMENT:
+            verdict = "хуже baseline"
+        else:
+            verdict = "паритет"
+
+        rows.append(
+            {
+                "target": target,
+                "target_short": TARGET_SHORT_NAMES[target],
+                "central_model": CENTRAL_MODEL_NAME,
+                "comparison_basis": "seed_mean",
+                "central_metric_source": "seed_mean",
+                "central_seed_count": int(central_seed_rows["seed"].nunique()),
+                "central_average_precision": central_ap,
+                "central_average_precision_std": central_ap_std,
+                "central_roc_auc": _safe_float(central_seed_rows["roc_auc"].mean()) if "roc_auc" in central_seed_rows else None,
+                "central_f1": _safe_float(central_seed_rows["f1"].mean()) if "f1" in central_seed_rows else None,
+                "central_precision": _safe_float(central_seed_rows["precision"].mean()) if "precision" in central_seed_rows else None,
+                "central_recall": _safe_float(central_seed_rows["recall"].mean()) if "recall" in central_seed_rows else None,
+                "central_threshold": _safe_float(central_seed_rows["threshold"].mean()) if "threshold" in central_seed_rows else None,
+                "random_reference_ap": prevalence,
+                "best_baseline": str(best_baseline.get("baseline", "baseline")),
+                "best_baseline_average_precision": best_ap,
+                "best_baseline_roc_auc": _safe_float(best_baseline.get("roc_auc")),
+                "best_baseline_f1": _safe_float(best_baseline.get("f1")),
+                "best_baseline_recall": _safe_float(best_baseline.get("recall")),
+                "delta_vs_random_ap": delta_vs_random,
+                "delta_vs_best_baseline_ap": delta_vs_best,
+                "verdict": verdict,
+            }
+        )
+    return rows or build_baseline_diagnostics(baseline_comparison)
 
 
 def build_calibration_bins(prediction_store: pd.DataFrame, bins: int = 10) -> pd.DataFrame:
@@ -212,7 +318,9 @@ def _best_baseline_names(baseline_comparison: pd.DataFrame) -> dict[str, str]:
     best: dict[str, str] = {}
     if baseline_comparison.empty:
         return best
-    table = baseline_comparison.copy()
+    table = _normalize_baseline_comparison(baseline_comparison)
+    if table.empty:
+        return best
     if "status" in table.columns:
         table = table.loc[table["status"].fillna("ok").eq("ok")].copy()
     if "slice" in table.columns:
@@ -233,15 +341,22 @@ def _pivot_baseline_scores(
     if baseline_predictions.empty:
         return pd.DataFrame()
 
+    predictions = baseline_predictions.copy()
+    if "baseline" not in predictions.columns and "model" in predictions.columns:
+        predictions["baseline"] = predictions["model"]
+    required = {"run_id", "window_ts", "target", "baseline", "score"}
+    if not required.issubset(predictions.columns):
+        return pd.DataFrame()
+
     best_names = _best_baseline_names(baseline_comparison)
     frames = []
     for target, score_col in TARGET_SCORE_COLUMNS.items():
         baseline_name = best_names.get(target)
         if not baseline_name:
             continue
-        rows = baseline_predictions.loc[
-            baseline_predictions["target"].astype(str).eq(target)
-            & baseline_predictions["baseline"].astype(str).eq(baseline_name)
+        rows = predictions.loc[
+            predictions["target"].astype(str).eq(target)
+            & predictions["baseline"].astype(str).eq(baseline_name)
         ].copy()
         if rows.empty:
             continue
@@ -427,6 +542,8 @@ def build_seed_metrics(metrics_payload: dict[str, Any], existing_seed_metrics: p
                 "f1": row.get("f1"),
                 "precision": row.get("precision"),
                 "recall": row.get("recall"),
+                "threshold": row.get("threshold"),
+                "prevalence": row.get("prevalence"),
             }
         )
     if not rows:
@@ -454,7 +571,7 @@ def build_dashboard_model_report(
                 }
             )
 
-    baseline_diagnostics = build_baseline_diagnostics(baseline_comparison)
+    baseline_diagnostics = build_seed_mean_baseline_diagnostics(seed_metrics, baseline_comparison)
     seed_status = "pending_clean_3_seed_rerun"
     if not seed_metrics.empty and "seed" in seed_metrics.columns and seed_metrics["seed"].nunique() >= 3:
         seed_status = "complete_3_seed"
@@ -465,8 +582,19 @@ def build_dashboard_model_report(
     ]
     warnings.extend(build_label_provenance(timeline).get("warnings", []))
 
+    per_slice_metrics = []
+    for row in metrics_payload.get("primary_metrics", []):
+        if str(row.get("slice", "")).startswith("workload=") or row.get("slice") in {"all", "both", "kpi_only", "has_both_modalities=1"}:
+            per_slice_metrics.append(row)
+
+    branch_ablation = [
+        row for row in metrics_payload.get("ablation_metrics", [])
+        if row.get("slice") == "all"
+    ]
+
     return {
         "schema_version": 1,
+        "metrics_payload": metrics_payload,
         "split_summary": split_summary,
         "label_provenance": build_label_provenance(timeline),
         "baseline_diagnostics": baseline_diagnostics,
@@ -479,6 +607,16 @@ def build_dashboard_model_report(
         "thresholds": {
             "warning": metrics_payload.get("threshold_warning"),
             "risk": metrics_payload.get("threshold_risk"),
+        },
+        "seed_metrics": seed_metrics.to_dict(orient="records") if not seed_metrics.empty else [],
+        "calibration_bins": build_calibration_bins(prediction_store).to_dict(orient="records"),
+        "why_losing": {
+            "per_slice_metrics": per_slice_metrics,
+            "branch_ablation": branch_ablation,
+            "architecture_ablation": [
+                row for row in metrics_payload.get("architecture_ablation", [])
+                if row.get("slice") == "all"
+            ],
         },
         "warnings": warnings,
     }
@@ -511,14 +649,10 @@ def write_dashboard_diagnostics(
         seed_metrics=seed_metrics,
     )
 
-    seed_metrics.to_csv(output_dir / "seed_metrics.csv", index=False)
-    calibration_bins.to_csv(output_dir / "calibration_bins.csv", index=False)
-    replay_store.to_csv(output_dir / "dashboard_replay_store.csv", index=False)
-    write_json(output_dir / "dashboard_model_report.json", report)
+    replay_store.to_csv(output_dir / REPLAY_STORE_FILE, index=False, compression="gzip")
+    write_json(output_dir / MODEL_REPORT_FILE, report)
 
     return {
-        "dashboard_model_report": str(output_dir / "dashboard_model_report.json"),
-        "dashboard_replay_store": str(output_dir / "dashboard_replay_store.csv"),
-        "seed_metrics": str(output_dir / "seed_metrics.csv"),
-        "calibration_bins": str(output_dir / "calibration_bins.csv"),
+        "model_report": str(output_dir / MODEL_REPORT_FILE),
+        "dashboard_replay_store": str(output_dir / REPLAY_STORE_FILE),
     }
