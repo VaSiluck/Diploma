@@ -22,6 +22,9 @@ CENTRAL_MODEL_NAME = "central-fusion-model"
 MIN_MEAN_AP_IMPROVEMENT = 0.02
 MODEL_REPORT_FILE = "model_report.json"
 REPLAY_STORE_FILE = "dashboard_replay_store.csv.gz"
+SEED_METRICS_FILE = "seed_metrics.csv"
+CALIBRATION_BINS_FILE = "calibration_bins.csv"
+DASHBOARD_MODEL_REPORT_FILE = "dashboard_model_report.json"
 
 
 def _normalize_baseline_comparison(table: pd.DataFrame) -> pd.DataFrame:
@@ -207,9 +210,14 @@ def build_seed_mean_baseline_diagnostics(
     seed_table = seed_metrics.copy()
     if "slice" in seed_table.columns:
         seed_table = seed_table.loc[seed_table["slice"].fillna("all").eq("all")].copy()
-    if "primary_experiment" in seed_table.columns:
+    filtered_by_flag = False
+    if "selected_experiment" in seed_table.columns and seed_table["selected_experiment"].astype(bool).any():
+        seed_table = seed_table.loc[seed_table["selected_experiment"].astype(bool)].copy()
+        filtered_by_flag = True
+    elif "primary_experiment" in seed_table.columns:
         seed_table = seed_table.loc[seed_table["primary_experiment"].astype(bool)].copy()
-    if "experiment" in seed_table.columns:
+        filtered_by_flag = True
+    if "experiment" in seed_table.columns and not filtered_by_flag:
         seed_table = seed_table.loc[seed_table["experiment"].astype(str).eq("central_fusion")].copy()
     if seed_table.empty:
         return build_baseline_diagnostics(baseline_comparison)
@@ -457,6 +465,7 @@ def build_dashboard_replay_store(
     context = context[context_cols + [col for col in kpi_dashboard_cols if col in context.columns]]
 
     keep_pred = [
+        "experiment_run_id",
         "run_id",
         "window_ts",
         "split",
@@ -572,9 +581,14 @@ def build_dashboard_model_report(
             )
 
     baseline_diagnostics = build_seed_mean_baseline_diagnostics(seed_metrics, baseline_comparison)
+    expected_seeds = metrics_payload.get("train_seeds", [42, 43, 44])
+    if not isinstance(expected_seeds, list):
+        expected_seeds = [42, 43, 44]
     seed_status = "pending_clean_3_seed_rerun"
-    if not seed_metrics.empty and "seed" in seed_metrics.columns and seed_metrics["seed"].nunique() >= 3:
-        seed_status = "complete_3_seed"
+    if not seed_metrics.empty and "seed" in seed_metrics.columns:
+        observed_seed_count = int(seed_metrics["seed"].nunique())
+        if observed_seed_count >= max(3, len(expected_seeds)):
+            seed_status = f"complete_{observed_seed_count}_seed"
 
     warnings = [
         "Score не является откалиброванной вероятностью.",
@@ -594,13 +608,14 @@ def build_dashboard_model_report(
 
     return {
         "schema_version": 1,
+        "experiment_run_id": metrics_payload.get("experiment_run_id"),
         "metrics_payload": metrics_payload,
         "split_summary": split_summary,
         "label_provenance": build_label_provenance(timeline),
         "baseline_diagnostics": baseline_diagnostics,
         "training_verdict": build_training_verdict(baseline_diagnostics),
         "seed_protocol": {
-            "expected_seeds": [42, 43, 44],
+            "expected_seeds": expected_seeds,
             "status": seed_status,
             "observed_seeds": sorted(seed_metrics["seed"].dropna().astype(int).unique().tolist()) if "seed" in seed_metrics.columns else [],
         },
@@ -610,6 +625,11 @@ def build_dashboard_model_report(
         },
         "seed_metrics": seed_metrics.to_dict(orient="records") if not seed_metrics.empty else [],
         "calibration_bins": build_calibration_bins(prediction_store).to_dict(orient="records"),
+        "hypothesis_summary": metrics_payload.get("hypothesis_summary", []),
+        "hypothesis_registry": metrics_payload.get("hypothesis_registry", []),
+        "baseline_sanity_diagnostics": metrics_payload.get("baseline_sanity_diagnostics", []),
+        "artifact_consistency_report": metrics_payload.get("artifact_consistency_report", []),
+        "artifact_consistency_passed": metrics_payload.get("artifact_consistency_passed"),
         "why_losing": {
             "per_slice_metrics": per_slice_metrics,
             "branch_ablation": branch_ablation,
@@ -635,6 +655,10 @@ def write_dashboard_diagnostics(
     output_dir.mkdir(parents=True, exist_ok=True)
     seed_metrics = build_seed_metrics(metrics_payload, existing_seed_metrics)
     calibration_bins = build_calibration_bins(prediction_store)
+    if not seed_metrics.empty and "experiment_run_id" not in seed_metrics.columns:
+        seed_metrics.insert(0, "experiment_run_id", metrics_payload.get("experiment_run_id"))
+    if not calibration_bins.empty and "experiment_run_id" not in calibration_bins.columns:
+        calibration_bins.insert(0, "experiment_run_id", metrics_payload.get("experiment_run_id"))
     replay_store = build_dashboard_replay_store(
         timeline=timeline,
         prediction_store=prediction_store,
@@ -650,9 +674,15 @@ def write_dashboard_diagnostics(
     )
 
     replay_store.to_csv(output_dir / REPLAY_STORE_FILE, index=False, compression="gzip")
+    seed_metrics.to_csv(output_dir / SEED_METRICS_FILE, index=False)
+    calibration_bins.to_csv(output_dir / CALIBRATION_BINS_FILE, index=False)
     write_json(output_dir / MODEL_REPORT_FILE, report)
+    write_json(output_dir / DASHBOARD_MODEL_REPORT_FILE, report)
 
     return {
         "model_report": str(output_dir / MODEL_REPORT_FILE),
+        "dashboard_model_report": str(output_dir / DASHBOARD_MODEL_REPORT_FILE),
         "dashboard_replay_store": str(output_dir / REPLAY_STORE_FILE),
+        "seed_metrics": str(output_dir / SEED_METRICS_FILE),
+        "calibration_bins": str(output_dir / CALIBRATION_BINS_FILE),
     }

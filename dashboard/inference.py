@@ -13,9 +13,14 @@ from dashboard.contract_pipeline import APP_ROOT, ALIGNED_CONTRACT_PATH, RAW_CEN
 COMPACT_BUNDLE_FILES = [
     "central_model.pt",
     "preprocessing_artifacts.joblib",
+    "central_model_metrics.json",
     "model_report.json",
+    "dashboard_model_report.json",
     "baseline_comparison.csv",
+    "model_card_central_fusion.md",
     "dashboard_replay_store.csv.gz",
+    "central_model_predictions.csv",
+    "inference_store.csv",
 ]
 
 DEBUG_ARTIFACT_FILES = [
@@ -24,14 +29,14 @@ DEBUG_ARTIFACT_FILES = [
     "model_config.json",
     "dry_run_report.json",
     "inference_manifest.json",
-    "inference_store.csv",
-    "central_model_predictions.csv",
-    "central_model_metrics.json",
-    "dashboard_model_report.json",
     "dashboard_replay_store.csv",
     "seed_metrics.csv",
     "calibration_bins.csv",
-    "model_card_central_fusion.md",
+    "hypothesis_registry.csv",
+    "hypothesis_summary.csv",
+    "baseline_sanity_diagnostics.csv",
+    "artifact_consistency_report.csv",
+    "experiment_run_manifest.json",
 ]
 
 PREDICTION_STORE_FILES = [
