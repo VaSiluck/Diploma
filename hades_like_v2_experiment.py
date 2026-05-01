@@ -114,6 +114,10 @@ class RunConfig:
     aux_lambda: float
     anomaly_lambda: float
     consistency_lambda: float
+    intensity_lambda: float
+    intensity_mode: str
+    intensity_risk_horizon_sec: float
+    intensity_warning_horizon_sec: float
     risk_recall_target: float
     validation_strategy: str
     validation_fraction: float
@@ -494,6 +498,79 @@ def build_kpi_sequence(frame: pd.DataFrame, train_idx: np.ndarray, selected_cols
     return seq, mask, manifest
 
 
+def _numeric_column_or_default(frame: pd.DataFrame, candidates: list[str], default: float) -> np.ndarray:
+    for col in candidates:
+        if col in frame.columns:
+            values = pd.to_numeric(frame[col], errors="coerce").to_numpy(dtype=np.float32)
+            values = np.where(np.isfinite(values), values, float(default)).astype(np.float32)
+            return values
+    return np.full(len(frame), float(default), dtype=np.float32)
+
+
+def build_intensity_targets(
+    frame: pd.DataFrame,
+    mode: str,
+    risk_horizon_sec: float,
+    warning_horizon_sec: float,
+) -> tuple[np.ndarray, np.ndarray, dict]:
+    mode = str(mode).strip().lower()
+    if mode not in {"auto", "lead_time", "binary"}:
+        raise ValueError(f"Unsupported intensity mode: {mode!r}")
+
+    y_warning = frame["y_warning"].astype(np.float32).to_numpy()
+    y_risk = frame["y_risk"].astype(np.float32).to_numpy()
+    if mode == "binary":
+        return y_warning, y_risk, {
+            "requested_mode": mode,
+            "resolved_mode": "binary",
+            "reason": "explicit_binary_mode",
+            "warning_mean": float(np.mean(y_warning)),
+            "risk_mean": float(np.mean(y_risk)),
+        }
+    if "strict_lead_sec" not in frame.columns:
+        if mode == "lead_time":
+            raise RuntimeError("intensity_mode=lead_time requires strict_lead_sec in the contract.")
+        return y_warning, y_risk, {
+            "requested_mode": mode,
+            "resolved_mode": "binary",
+            "reason": "strict_lead_sec_missing",
+            "warning_mean": float(np.mean(y_warning)),
+            "risk_mean": float(np.mean(y_risk)),
+        }
+
+    lead = pd.to_numeric(frame["strict_lead_sec"], errors="coerce").to_numpy(dtype=np.float32)
+    gap = _numeric_column_or_default(frame, ["strict_lead_gap_sec"], 0.0)
+    risk_horizon = _numeric_column_or_default(frame, ["strict_risk_horizon_sec", "risk_horizon_sec"], risk_horizon_sec)
+    warning_horizon = _numeric_column_or_default(frame, ["strict_warning_horizon_sec", "warning_horizon_sec"], warning_horizon_sec)
+
+    def curve(label: np.ndarray, horizon: np.ndarray) -> np.ndarray:
+        denom = np.maximum(horizon - gap, 1.0)
+        valid = np.isfinite(lead) & np.isfinite(gap) & np.isfinite(horizon) & (lead >= gap) & (lead <= horizon)
+        value = 1.0 - ((lead - gap) / denom)
+        value = np.where(valid, value, 0.0)
+        value = np.clip(value, 0.0, 1.0)
+        # Keep boundary positives learnable when lead == horizon.
+        value = np.maximum(value, 0.05 * label)
+        return value.astype(np.float32)
+
+    warning_intensity = curve(y_warning, warning_horizon)
+    risk_intensity = curve(y_risk, risk_horizon)
+    manifest = {
+        "requested_mode": mode,
+        "resolved_mode": "lead_time",
+        "risk_horizon_sec_default": float(risk_horizon_sec),
+        "warning_horizon_sec_default": float(warning_horizon_sec),
+        "lead_gap_sec_median": float(np.nanmedian(gap)) if len(gap) else None,
+        "risk_horizon_sec_median": float(np.nanmedian(risk_horizon)) if len(risk_horizon) else None,
+        "warning_horizon_sec_median": float(np.nanmedian(warning_horizon)) if len(warning_horizon) else None,
+        "warning_mean": float(np.mean(warning_intensity)),
+        "risk_mean": float(np.mean(risk_intensity)),
+        "warning_positive_mean": float(np.mean(warning_intensity[y_warning > 0.5])) if np.any(y_warning > 0.5) else None,
+        "risk_positive_mean": float(np.mean(risk_intensity[y_risk > 0.5])) if np.any(y_risk > 0.5) else None,
+    }
+    return warning_intensity, risk_intensity, manifest
+
+
 class HadesDataset(Dataset):
     def __init__(self, arrays: dict[str, np.ndarray], indices: Iterable[int]):
         self.arrays = arrays
@@ -513,6 +590,8 @@ class HadesDataset(Dataset):
             "y_warning": torch.tensor(self.arrays["y_warning"][idx], dtype=torch.float32),
             "y_risk": torch.tensor(self.arrays["y_risk"][idx], dtype=torch.float32),
             "y_anomaly": torch.tensor(self.arrays["y_anomaly"][idx], dtype=torch.float32),
+            "warning_intensity": torch.tensor(self.arrays["warning_intensity"][idx], dtype=torch.float32),
+            "risk_intensity": torch.tensor(self.arrays["risk_intensity"][idx], dtype=torch.float32),
             "row_index": torch.tensor(idx, dtype=torch.long),
         }
 
@@ -553,6 +632,8 @@ class HadesLikeV2(nn.Module):
         self.fuser = nn.Sequential(nn.Linear(hidden * 6 + 4, hidden * 2), nn.ReLU(), nn.Dropout(0.12), nn.Linear(hidden * 2, hidden), nn.ReLU())
         self.warning_head = nn.Sequential(nn.Linear(hidden, hidden // 2), nn.ReLU(), nn.Linear(hidden // 2, 1))
         self.risk_head = nn.Sequential(nn.Linear(hidden, hidden // 2), nn.ReLU(), nn.Linear(hidden // 2, 1))
+        self.warning_intensity_head = nn.Sequential(nn.Linear(hidden, hidden // 2), nn.ReLU(), nn.Linear(hidden // 2, 1))
+        self.risk_intensity_head = nn.Sequential(nn.Linear(hidden, hidden // 2), nn.ReLU(), nn.Linear(hidden // 2, 1))
         self.anomaly_head = nn.Sequential(nn.Linear(hidden, hidden // 2), nn.ReLU(), nn.Linear(hidden // 2, 1))
         self.log_warning_head = nn.Linear(hidden, 1)
         self.log_risk_head = nn.Linear(hidden, 1)
@@ -597,6 +678,8 @@ class HadesLikeV2(nn.Module):
         return {
             "warning_logit": self.warning_head(fused).squeeze(1),
             "risk_logit": self.risk_head(fused).squeeze(1),
+            "warning_intensity_logit": self.warning_intensity_head(fused).squeeze(1),
+            "risk_intensity_logit": self.risk_intensity_head(fused).squeeze(1),
             "anomaly_logit": self.anomaly_head(fused).squeeze(1),
             "log_warning_logit": self.log_warning_head(h_log).squeeze(1),
             "log_risk_logit": self.log_risk_head(h_log).squeeze(1),
@@ -636,13 +719,32 @@ def multitask_loss(outputs, batch, weights, cfg: RunConfig):
     both = (batch["avail"][:, 0] * batch["avail"][:, 1]).float()
     consistency_raw = bce(outputs["consistency_logit"], y_a, reduction="none")
     consistency = (consistency_raw * both).sum() / both.sum().clamp_min(1.0)
-    total = warning_loss + cfg.risk_lambda * risk_loss + cfg.aux_lambda * aux + cfg.anomaly_lambda * anomaly + cfg.consistency_lambda * consistency
+    warning_intensity = nn.functional.smooth_l1_loss(
+        torch.sigmoid(outputs["warning_intensity_logit"]),
+        batch["warning_intensity"],
+    )
+    risk_intensity = nn.functional.smooth_l1_loss(
+        torch.sigmoid(outputs["risk_intensity_logit"]),
+        batch["risk_intensity"],
+    )
+    intensity = 0.40 * warning_intensity + 0.60 * risk_intensity
+    total = (
+        warning_loss
+        + cfg.risk_lambda * risk_loss
+        + cfg.aux_lambda * aux
+        + cfg.anomaly_lambda * anomaly
+        + cfg.consistency_lambda * consistency
+        + cfg.intensity_lambda * intensity
+    )
     return total, {
         "warning": float(warning_loss.detach().cpu()),
         "risk": float(risk_loss.detach().cpu()),
         "aux": float(aux.detach().cpu()),
         "anomaly": float(anomaly.detach().cpu()),
         "consistency": float(consistency.detach().cpu()),
+        "warning_intensity": float(warning_intensity.detach().cpu()),
+        "risk_intensity": float(risk_intensity.detach().cpu()),
+        "intensity": float(intensity.detach().cpu()),
         "total": float(total.detach().cpu()),
     }
 
@@ -659,6 +761,62 @@ def safe_roc(y, score):
     if len(np.unique(y)) < 2:
         return None
     return float(roc_auc_score(y, score))
+
+
+def fmt_metric(value) -> str:
+    if value is None:
+        return "nan"
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "nan"
+    if not math.isfinite(value):
+        return "nan"
+    return f"{value:.4f}"
+
+
+def safe_corr(y, score, method: str = "pearson"):
+    data = pd.DataFrame({"target": np.asarray(y, dtype=float), "score": np.asarray(score, dtype=float)}).replace(
+        [np.inf, -np.inf],
+        np.nan,
+    )
+    data = data.dropna()
+    if len(data) < 2 or data["target"].nunique() < 2 or data["score"].nunique() < 2:
+        return None
+    return float(data["target"].corr(data["score"], method=method))
+
+
+def intensity_diagnostics(pred: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    specs = [
+        ("y_warning", "warning_intensity", "warning_intensity_score"),
+        ("y_risk", "risk_intensity", "risk_intensity_score"),
+    ]
+    for binary_target, target_col, score_col in specs:
+        if target_col not in pred.columns or score_col not in pred.columns:
+            continue
+        target = pred[target_col].astype(float).to_numpy()
+        score = pred[score_col].astype(float).to_numpy()
+        finite = np.isfinite(target) & np.isfinite(score)
+        if not finite.any():
+            continue
+        error = score[finite] - target[finite]
+        row = {
+            "target": target_col,
+            "score": score_col,
+            "n": int(finite.sum()),
+            "target_mean": float(np.mean(target[finite])),
+            "score_mean": float(np.mean(score[finite])),
+            "mae": float(np.mean(np.abs(error))),
+            "rmse": float(np.sqrt(np.mean(error**2))),
+            "pearson": safe_corr(target[finite], score[finite], "pearson"),
+            "spearman": safe_corr(target[finite], score[finite], "spearman"),
+        }
+        if binary_target in pred.columns:
+            row["binary_average_precision"] = safe_ap(pred[binary_target], pred[score_col])
+            row["binary_roc_auc"] = safe_roc(pred[binary_target], pred[score_col])
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def metrics_at_threshold(y, score, threshold):
@@ -694,6 +852,14 @@ def precision_at_fraction(y, score, fraction: float) -> dict:
 def topk_diagnostics(pred: pd.DataFrame, top_fracs: list[float]) -> pd.DataFrame:
     rows = []
     target_score_pairs = [("y_warning", "warning_score"), ("y_risk", "risk_score")]
+    for target, score_col in [
+        ("y_warning", "warning_intensity_score"),
+        ("y_risk", "risk_intensity_score"),
+        ("y_warning", "state_score"),
+        ("y_risk", "state_score"),
+    ]:
+        if score_col in pred.columns:
+            target_score_pairs.append((target, score_col))
     for target, score_col in target_score_pairs:
         y = pred[target].astype(int).to_numpy()
         score = pred[score_col].astype(float).to_numpy()
@@ -773,12 +939,18 @@ def predict(model, dataset, device, batch_size: int) -> pd.DataFrame:
     for batch in loader:
         batch = {k: v.to(device) if torch.is_tensor(v) else v for k, v in batch.items()}
         out = model(batch)
+        warning_intensity_score = torch.sigmoid(out["warning_intensity_logit"]).detach().cpu().numpy()
+        risk_intensity_score = torch.sigmoid(out["risk_intensity_logit"]).detach().cpu().numpy()
+        state_score = np.maximum(0.65 * warning_intensity_score, risk_intensity_score)
         rows.append(
             pd.DataFrame(
                 {
                     "row_index": batch["row_index"].detach().cpu().numpy(),
                     "warning_score": torch.sigmoid(out["warning_logit"]).detach().cpu().numpy(),
                     "risk_score": torch.sigmoid(out["risk_logit"]).detach().cpu().numpy(),
+                    "warning_intensity_score": warning_intensity_score,
+                    "risk_intensity_score": risk_intensity_score,
+                    "state_score": state_score,
                     "anomaly_score": torch.sigmoid(out["anomaly_logit"]).detach().cpu().numpy(),
                     "log_warning_score": torch.sigmoid(out["log_warning_logit"]).detach().cpu().numpy(),
                     "log_risk_score": torch.sigmoid(out["log_risk_logit"]).detach().cpu().numpy(),
@@ -789,6 +961,8 @@ def predict(model, dataset, device, batch_size: int) -> pd.DataFrame:
                     "kpi_to_log_attention_mean": out["kpi_to_log_attention_mean"].detach().cpu().numpy(),
                     "y_warning": batch["y_warning"].detach().cpu().numpy(),
                     "y_risk": batch["y_risk"].detach().cpu().numpy(),
+                    "warning_intensity": batch["warning_intensity"].detach().cpu().numpy(),
+                    "risk_intensity": batch["risk_intensity"].detach().cpu().numpy(),
                 }
             )
         )
@@ -798,12 +972,15 @@ def predict(model, dataset, device, batch_size: int) -> pd.DataFrame:
 def monitor_score(pred: pd.DataFrame, cfg: RunConfig) -> float:
     ap_w = safe_ap(pred["y_warning"], pred["warning_score"]) or 0.0
     ap_r = safe_ap(pred["y_risk"], pred["risk_score"]) or 0.0
-    risk_p5 = precision_at_fraction(pred["y_risk"], pred["risk_score"], 0.05)["precision_at_top"] or 0.0
-    warning_p10 = precision_at_fraction(pred["y_warning"], pred["warning_score"], 0.10)["precision_at_top"] or 0.0
+    risk_rank_score = pred["risk_intensity_score"] if "risk_intensity_score" in pred.columns else pred["risk_score"]
+    warning_rank_score = pred["warning_intensity_score"] if "warning_intensity_score" in pred.columns else pred["warning_score"]
+    ap_r_intensity = safe_ap(pred["y_risk"], risk_rank_score) or 0.0
+    risk_p5 = precision_at_fraction(pred["y_risk"], risk_rank_score, 0.05)["precision_at_top"] or 0.0
+    warning_p10 = precision_at_fraction(pred["y_warning"], warning_rank_score, 0.10)["precision_at_top"] or 0.0
     if cfg.monitor_mode == "strict":
         # Strict forecasting has weak hard-risk labels; choose checkpoints that
-        # preserve warning ranking while still rewarding early risk concentration.
-        return 0.50 * ap_w + 0.25 * ap_r + 0.15 * risk_p5 + 0.10 * warning_p10
+        # preserve warning ranking while rewarding lead-time risk concentration.
+        return 0.38 * ap_w + 0.15 * ap_r + 0.20 * ap_r_intensity + 0.17 * risk_p5 + 0.10 * warning_p10
     if cfg.monitor_mode == "warning":
         return 0.70 * ap_w + 0.15 * ap_r + 0.15 * warning_p10
     thr, _ = select_threshold(pred["y_risk"], pred["risk_score"], "risk_recall", min_recall=0.70)
@@ -855,8 +1032,11 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
         scheduler.step(score)
         ap_w = safe_ap(val_pred["y_warning"], val_pred["warning_score"])
         ap_r = safe_ap(val_pred["y_risk"], val_pred["risk_score"])
-        val_risk_p5 = precision_at_fraction(val_pred["y_risk"], val_pred["risk_score"], 0.05)["precision_at_top"]
-        val_warning_p10 = precision_at_fraction(val_pred["y_warning"], val_pred["warning_score"], 0.10)["precision_at_top"]
+        ap_r_intensity = safe_ap(val_pred["y_risk"], val_pred["risk_intensity_score"])
+        val_risk_p5 = precision_at_fraction(val_pred["y_risk"], val_pred["risk_intensity_score"], 0.05)["precision_at_top"]
+        val_warning_p10 = precision_at_fraction(val_pred["y_warning"], val_pred["warning_intensity_score"], 0.10)["precision_at_top"]
+        val_risk_intensity_mae = float(np.mean(np.abs(val_pred["risk_intensity_score"] - val_pred["risk_intensity"])))
+        val_warning_intensity_mae = float(np.mean(np.abs(val_pred["warning_intensity_score"] - val_pred["warning_intensity"])))
         improved = score > best_score + 1e-5
         if improved:
             best_score = score
@@ -872,15 +1052,24 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
                 "train_loss": float(np.mean(losses)) if losses else None,
                 "val_ap_warning": ap_w,
                 "val_ap_risk": ap_r,
+                "val_ap_risk_intensity_score": ap_r_intensity,
                 "val_warning_precision_top10": val_warning_p10,
                 "val_risk_precision_top5": val_risk_p5,
+                "val_warning_intensity_mae": val_warning_intensity_mae,
+                "val_risk_intensity_mae": val_risk_intensity_mae,
                 "monitor_score": float(score),
                 "best_score": float(best_score),
                 "patience_left": int(patience_left),
                 "lr": float(opt.param_groups[0]["lr"]),
             }
         )
-        print(f"seed={seed} epoch={epoch:03d} loss={np.mean(losses):.4f} val_ap_w={ap_w:.4f} val_ap_r={ap_r:.4f} val_p10_w={val_warning_p10:.4f} val_p5_r={val_risk_p5:.4f} monitor={score:.4f} best={best_score:.4f} patience={patience_left}")
+        print(
+            f"seed={seed} epoch={epoch:03d} loss={np.mean(losses):.4f} "
+            f"val_ap_w={fmt_metric(ap_w)} val_ap_r={fmt_metric(ap_r)} "
+            f"val_ap_r_int={fmt_metric(ap_r_intensity)} val_p10_w={fmt_metric(val_warning_p10)} "
+            f"val_p5_r={fmt_metric(val_risk_p5)} val_mae_r_int={fmt_metric(val_risk_intensity_mae)} "
+            f"monitor={score:.4f} best={best_score:.4f} patience={patience_left}"
+        )
         if patience_left <= 0:
             break
     if best_state is not None:
@@ -889,14 +1078,25 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
     test_pred = predict(model, test_ds, device, cfg.batch_size)
     thr_w, info_w = select_threshold(val_pred["y_warning"], val_pred["warning_score"], "f1")
     thr_r, info_r = select_threshold(val_pred["y_risk"], val_pred["risk_score"], "risk_recall", cfg.risk_recall_target + 0.05)
+    thr_w_intensity, info_w_intensity = select_threshold(val_pred["y_warning"], val_pred["warning_intensity_score"], "f1")
+    thr_r_intensity, info_r_intensity = select_threshold(val_pred["y_risk"], val_pred["risk_intensity_score"], "risk_recall", cfg.risk_recall_target + 0.05)
     test_pred["seed"] = seed
     val_pred["seed"] = seed
     test_pred["threshold_warning"] = thr_w
     test_pred["threshold_risk"] = thr_r
+    test_pred["threshold_warning_intensity"] = thr_w_intensity
+    test_pred["threshold_risk_intensity"] = thr_r_intensity
     val_pred["threshold_warning"] = thr_w
     val_pred["threshold_risk"] = thr_r
+    val_pred["threshold_warning_intensity"] = thr_w_intensity
+    val_pred["threshold_risk_intensity"] = thr_r_intensity
     metrics = []
-    for target, score_col, thr in [("y_warning", "warning_score", thr_w), ("y_risk", "risk_score", thr_r)]:
+    for target, score_col, thr, score_family in [
+        ("y_warning", "warning_score", thr_w, "binary_head"),
+        ("y_risk", "risk_score", thr_r, "binary_head"),
+        ("y_warning", "warning_intensity_score", thr_w_intensity, "intensity_head"),
+        ("y_risk", "risk_intensity_score", thr_r_intensity, "intensity_head"),
+    ]:
         m = metrics_at_threshold(test_pred[target], test_pred[score_col], thr)
         p5 = precision_at_fraction(test_pred[target], test_pred[score_col], 0.05)
         p10 = precision_at_fraction(test_pred[target], test_pred[score_col], 0.10)
@@ -904,6 +1104,8 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
             {
                 "seed": seed,
                 "target": target,
+                "score": score_col,
+                "score_family": score_family,
                 "average_precision": safe_ap(test_pred[target], test_pred[score_col]),
                 "roc_auc": safe_roc(test_pred[target], test_pred[score_col]),
                 **m,
@@ -923,7 +1125,16 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
         "metrics": pd.DataFrame(metrics),
         "val_pred": val_pred,
         "test_pred": test_pred,
-        "thresholds": {"warning": thr_w, "risk": thr_r, "warning_info": info_w, "risk_info": info_r},
+        "thresholds": {
+            "warning": thr_w,
+            "risk": thr_r,
+            "warning_intensity": thr_w_intensity,
+            "risk_intensity": thr_r_intensity,
+            "warning_info": info_w,
+            "risk_info": info_r,
+            "warning_intensity_info": info_w_intensity,
+            "risk_intensity_info": info_r_intensity,
+        },
         "best_epoch": best_epoch,
         "best_score": best_score,
     }
@@ -940,6 +1151,11 @@ def add_contract_columns(pred: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFram
         "strict_variant",
         "strict_lead_gap_sec",
         "strict_lead_sec",
+        "strict_risk_horizon_sec",
+        "strict_warning_horizon_sec",
+        "risk_horizon_sec",
+        "warning_horizon_sec",
+        "target_policy",
         "window_ts",
         "split",
         "log_available",
@@ -1155,6 +1371,10 @@ def main() -> None:
     parser.add_argument("--aux-lambda", type=float, default=0.10)
     parser.add_argument("--anomaly-lambda", type=float, default=0.15)
     parser.add_argument("--consistency-lambda", type=float, default=0.10)
+    parser.add_argument("--intensity-lambda", type=float, default=0.25)
+    parser.add_argument("--intensity-mode", choices=["auto", "lead_time", "binary"], default="auto")
+    parser.add_argument("--intensity-risk-horizon-sec", type=float, default=30.0)
+    parser.add_argument("--intensity-warning-horizon-sec", type=float, default=120.0)
     parser.add_argument("--risk-recall-target", type=float, default=0.80)
     parser.add_argument("--validation-strategy", choices=["auto", "existing", "run_id_holdout", "workload_holdout"], default="auto")
     parser.add_argument("--validation-fraction", type=float, default=0.20)
@@ -1203,6 +1423,10 @@ def main() -> None:
         aux_lambda=args.aux_lambda,
         anomaly_lambda=args.anomaly_lambda,
         consistency_lambda=args.consistency_lambda,
+        intensity_lambda=args.intensity_lambda,
+        intensity_mode=args.intensity_mode,
+        intensity_risk_horizon_sec=args.intensity_risk_horizon_sec,
+        intensity_warning_horizon_sec=args.intensity_warning_horizon_sec,
         risk_recall_target=args.risk_recall_target,
         validation_strategy=args.validation_strategy,
         validation_fraction=args.validation_fraction,
@@ -1245,6 +1469,15 @@ def main() -> None:
     kpi_seq, kpi_mask, kpi_manifest = build_kpi_sequence(frame, idx["train"], selected_kpi, cfg.kpi_seq_len)
     print({"kpi_shape": kpi_seq.shape, "features": len(selected_kpi)})
 
+    print("[4b/7] Building lead-time intensity targets")
+    warning_intensity, risk_intensity, intensity_manifest = build_intensity_targets(
+        frame,
+        cfg.intensity_mode,
+        cfg.intensity_risk_horizon_sec,
+        cfg.intensity_warning_horizon_sec,
+    )
+    print(intensity_manifest)
+
     arrays = {
         "log_seq": log_seq.astype(np.float32),
         "log_mask": log_mask.astype(np.float32),
@@ -1254,8 +1487,10 @@ def main() -> None:
         "y_warning": frame["y_warning"].astype(np.float32).to_numpy(),
         "y_risk": frame["y_risk"].astype(np.float32).to_numpy(),
         "y_anomaly": np.maximum(frame["y_warning"].astype(np.float32).to_numpy(), frame["y_risk"].astype(np.float32).to_numpy()),
+        "warning_intensity": warning_intensity.astype(np.float32),
+        "risk_intensity": risk_intensity.astype(np.float32),
     }
-    write_json(output_dir / "feature_manifest.json", {"log": log_manifest, "embedding": embedding_manifest, "kpi": kpi_manifest, "arrays": {k: list(v.shape) for k, v in arrays.items()}})
+    write_json(output_dir / "feature_manifest.json", {"log": log_manifest, "embedding": embedding_manifest, "kpi": kpi_manifest, "intensity": intensity_manifest, "arrays": {k: list(v.shape) for k, v in arrays.items()}})
 
     print("[5/7] Training HADES-like v2 seeds")
     results = []
@@ -1281,11 +1516,25 @@ def main() -> None:
     # For F1/recall, use median seed thresholds to avoid tuning on test.
     thr_w = float(np.median([r["thresholds"]["warning"] for r in results]))
     thr_r = float(np.median([r["thresholds"]["risk"] for r in results]))
+    thr_w_intensity = float(np.median([r["thresholds"]["warning_intensity"] for r in results]))
+    thr_r_intensity = float(np.median([r["thresholds"]["risk_intensity"] for r in results]))
     ensemble_metrics = []
-    for target, score, thr in [("y_warning", "warning_score", thr_w), ("y_risk", "risk_score", thr_r)]:
+    for target, score, thr, model_name in [
+        ("y_warning", "warning_score", thr_w, "seed_ensemble_mean"),
+        ("y_risk", "risk_score", thr_r, "seed_ensemble_mean"),
+        ("y_warning", "warning_intensity_score", thr_w_intensity, "seed_ensemble_mean_intensity"),
+        ("y_risk", "risk_intensity_score", thr_r_intensity, "seed_ensemble_mean_intensity"),
+        ("y_warning", "state_score", 0.5, "seed_ensemble_state_score"),
+        ("y_risk", "state_score", 0.5, "seed_ensemble_state_score"),
+    ]:
         m = metrics_at_threshold(ensemble[target], ensemble[score], thr)
-        ensemble_metrics.append({"target": target, "model": "seed_ensemble_mean", "average_precision": safe_ap(ensemble[target], ensemble[score]), "roc_auc": safe_roc(ensemble[target], ensemble[score]), **m})
+        ensemble_metrics.append({"target": target, "model": model_name, "score": score, "average_precision": safe_ap(ensemble[target], ensemble[score]), "roc_auc": safe_roc(ensemble[target], ensemble[score]), **m})
     ensemble_metrics = pd.DataFrame(ensemble_metrics)
+    intensity_metrics = intensity_diagnostics(ensemble)
+    intensity_metrics["split"] = "test"
+    val_intensity_metrics = intensity_diagnostics(val_ensemble)
+    val_intensity_metrics["split"] = "validation"
+    intensity_metrics_all = pd.concat([val_intensity_metrics, intensity_metrics], ignore_index=True)
     slices = evaluate_slices(ensemble, thr_w, thr_r)
     baseline_df = baseline_comparison(frame, baseline_path, idx["test"])
     ranking = topk_diagnostics(ensemble, cfg.top_fracs)
@@ -1298,6 +1547,7 @@ def main() -> None:
     ensemble.to_csv(output_dir / "ensemble_predictions.csv", index=False)
     val_ensemble.to_csv(output_dir / "validation_ensemble_predictions.csv", index=False)
     ensemble_metrics.to_csv(output_dir / "ensemble_metrics.csv", index=False)
+    intensity_metrics_all.to_csv(output_dir / "intensity_metrics.csv", index=False)
     slices.to_csv(output_dir / "slice_metrics.csv", index=False)
     ranking_all.to_csv(output_dir / "ranking_diagnostics.csv", index=False)
     baseline_df.to_csv(output_dir / "baseline_comparison.csv", index=False)
@@ -1305,16 +1555,24 @@ def main() -> None:
         "run_id": cfg.run_id,
         "seed_metrics": seed_metrics.to_dict("records"),
         "ensemble_metrics": ensemble_metrics.to_dict("records"),
+        "intensity_metrics": intensity_metrics_all.to_dict("records"),
         "slice_metrics": slices.to_dict("records"),
         "ranking_diagnostics": ranking_all.to_dict("records"),
         "baseline_comparison": baseline_df.to_dict("records"),
-        "thresholds": {"warning_median_seed": thr_w, "risk_median_seed": thr_r},
+        "thresholds": {
+            "warning_median_seed": thr_w,
+            "risk_median_seed": thr_r,
+            "warning_intensity_median_seed": thr_w_intensity,
+            "risk_intensity_median_seed": thr_r_intensity,
+        },
         "split_summary": split_report.to_dict("records"),
-        "feature_manifest": {"log": log_manifest, "embedding": embedding_manifest, "kpi_shape": list(kpi_seq.shape), "kpi_feature_count": len(selected_kpi)},
+        "feature_manifest": {"log": log_manifest, "embedding": embedding_manifest, "kpi_shape": list(kpi_seq.shape), "kpi_feature_count": len(selected_kpi), "intensity": intensity_manifest},
     }
     write_json(output_dir / "metrics_summary.json", summary)
     print(f"Done. Outputs written to: {output_dir}")
     print(ensemble_metrics.to_string(index=False))
+    if not intensity_metrics_all.empty:
+        print(intensity_metrics_all.to_string(index=False))
     print(ranking_all.to_string(index=False))
     if not baseline_df.empty:
         print(baseline_df.to_string(index=False))
