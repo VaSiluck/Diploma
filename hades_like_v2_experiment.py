@@ -118,6 +118,9 @@ class RunConfig:
     intensity_mode: str
     intensity_risk_horizon_sec: float
     intensity_warning_horizon_sec: float
+    pretrained_kpi_path: str | None
+    allow_pretrained_kpi_feature_mismatch: bool
+    freeze_pretrained_kpi_epochs: int
     risk_recall_target: float
     validation_strategy: str
     validation_fraction: float
@@ -988,7 +991,74 @@ def monitor_score(pred: pd.DataFrame, cfg: RunConfig) -> float:
     return 0.45 * ap_w + 0.45 * ap_r + 0.10 * m["precision"]
 
 
-def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> dict:
+def set_kpi_branch_trainable(model: nn.Module, trainable: bool) -> None:
+    prefixes = ("kpi_proj.", "kpi_encoder.", "kpi_pool.", "kpi_pos")
+    for name, param in model.named_parameters():
+        if name.startswith(prefixes):
+            param.requires_grad = bool(trainable)
+
+
+def load_pretrained_kpi_branch(
+    model: HadesLikeV2,
+    checkpoint_path: str | None,
+    selected_kpi_features: list[str],
+    allow_feature_mismatch: bool,
+    output_dir: Path,
+    seed: int,
+) -> dict:
+    report = {
+        "enabled": bool(checkpoint_path),
+        "checkpoint_path": checkpoint_path,
+        "loaded_keys": [],
+        "skipped_keys": [],
+        "feature_match": None,
+        "checkpoint_feature_count": None,
+        "current_feature_count": int(len(selected_kpi_features)),
+    }
+    if not checkpoint_path:
+        return report
+    path = Path(checkpoint_path)
+    if not path.exists():
+        report["error"] = f"checkpoint_not_found:{path}"
+        write_json(output_dir / f"pretrained_kpi_report_seed{seed}.json", report)
+        return report
+    checkpoint = torch.load(path, map_location="cpu")
+    branch_state = checkpoint.get("kpi_branch_state_dict") or {
+        k: v
+        for k, v in checkpoint.get("state_dict", {}).items()
+        if k.startswith(("kpi_proj.", "kpi_encoder.", "kpi_pool.", "kpi_pos"))
+    }
+    checkpoint_features = list(checkpoint.get("selected_kpi_features") or [])
+    feature_match = bool(checkpoint_features and checkpoint_features == list(selected_kpi_features))
+    report["feature_match"] = feature_match
+    report["checkpoint_feature_count"] = int(len(checkpoint_features))
+    model_state = model.state_dict()
+    loadable = {}
+    for key, value in branch_state.items():
+        reason = None
+        if key not in model_state:
+            reason = "missing_in_model"
+        elif tuple(model_state[key].shape) != tuple(value.shape):
+            reason = f"shape_mismatch:{tuple(value.shape)}!={tuple(model_state[key].shape)}"
+        elif key.startswith("kpi_proj.") and not feature_match and not allow_feature_mismatch:
+            reason = "feature_mismatch_projection_skipped"
+        if reason:
+            report["skipped_keys"].append({"key": key, "reason": reason})
+        else:
+            loadable[key] = value
+            report["loaded_keys"].append(key)
+    model.load_state_dict(loadable, strict=False)
+    report["loaded_key_count"] = int(len(report["loaded_keys"]))
+    report["skipped_key_count"] = int(len(report["skipped_keys"]))
+    write_json(output_dir / f"pretrained_kpi_report_seed{seed}.json", report)
+    print(
+        f"pretrained_kpi seed={seed} loaded={report['loaded_key_count']} skipped={report['skipped_key_count']} "
+        f"feature_match={feature_match}"
+    )
+    return report
+
+
+def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path, selected_kpi_features: list[str] | None = None) -> dict:
     set_seed(seed)
     device = torch.device(cfg.device)
     train_ds = HadesDataset(arrays, idx["train"])
@@ -1002,6 +1072,16 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
         log_len=arrays["log_seq"].shape[1],
         kpi_len=arrays["kpi_seq"].shape[1],
     ).to(device)
+    pretrained_report = load_pretrained_kpi_branch(
+        model,
+        cfg.pretrained_kpi_path,
+        selected_kpi_features or [],
+        cfg.allow_pretrained_kpi_feature_mismatch,
+        output_dir,
+        seed,
+    )
+    if cfg.pretrained_kpi_path and cfg.freeze_pretrained_kpi_epochs > 0 and pretrained_report.get("loaded_key_count", 0) > 0:
+        set_kpi_branch_trainable(model, False)
     weights = {
         "warning": torch.tensor(pos_weight(arrays["y_warning"][idx["train"]]), dtype=torch.float32, device=device),
         "risk": torch.tensor(pos_weight(arrays["y_risk"][idx["train"]]), dtype=torch.float32, device=device),
@@ -1016,6 +1096,12 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
     patience_left = cfg.patience
     history = []
     for epoch in range(1, cfg.epochs + 1):
+        if (
+            cfg.pretrained_kpi_path
+            and cfg.freeze_pretrained_kpi_epochs > 0
+            and epoch == cfg.freeze_pretrained_kpi_epochs + 1
+        ):
+            set_kpi_branch_trainable(model, True)
         model.train()
         losses = []
         for batch in loader:
@@ -1118,7 +1204,7 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
             }
         )
     pd.DataFrame(history).to_csv(output_dir / f"history_seed{seed}.csv", index=False)
-    torch.save({"state_dict": best_state, "config": asdict(cfg), "seed": seed, "best_epoch": best_epoch}, output_dir / f"model_seed{seed}.pt")
+    torch.save({"state_dict": best_state, "config": asdict(cfg), "seed": seed, "best_epoch": best_epoch, "pretrained_kpi_report": pretrained_report}, output_dir / f"model_seed{seed}.pt")
     return {
         "seed": seed,
         "model": model,
@@ -1375,6 +1461,9 @@ def main() -> None:
     parser.add_argument("--intensity-mode", choices=["auto", "lead_time", "binary"], default="auto")
     parser.add_argument("--intensity-risk-horizon-sec", type=float, default=30.0)
     parser.add_argument("--intensity-warning-horizon-sec", type=float, default=120.0)
+    parser.add_argument("--pretrained-kpi-path", default=None)
+    parser.add_argument("--allow-pretrained-kpi-feature-mismatch", action="store_true")
+    parser.add_argument("--freeze-pretrained-kpi-epochs", type=int, default=0)
     parser.add_argument("--risk-recall-target", type=float, default=0.80)
     parser.add_argument("--validation-strategy", choices=["auto", "existing", "run_id_holdout", "workload_holdout"], default="auto")
     parser.add_argument("--validation-fraction", type=float, default=0.20)
@@ -1427,6 +1516,9 @@ def main() -> None:
         intensity_mode=args.intensity_mode,
         intensity_risk_horizon_sec=args.intensity_risk_horizon_sec,
         intensity_warning_horizon_sec=args.intensity_warning_horizon_sec,
+        pretrained_kpi_path=args.pretrained_kpi_path,
+        allow_pretrained_kpi_feature_mismatch=args.allow_pretrained_kpi_feature_mismatch,
+        freeze_pretrained_kpi_epochs=args.freeze_pretrained_kpi_epochs,
         risk_recall_target=args.risk_recall_target,
         validation_strategy=args.validation_strategy,
         validation_fraction=args.validation_fraction,
@@ -1490,12 +1582,26 @@ def main() -> None:
         "warning_intensity": warning_intensity.astype(np.float32),
         "risk_intensity": risk_intensity.astype(np.float32),
     }
-    write_json(output_dir / "feature_manifest.json", {"log": log_manifest, "embedding": embedding_manifest, "kpi": kpi_manifest, "intensity": intensity_manifest, "arrays": {k: list(v.shape) for k, v in arrays.items()}})
+    write_json(
+        output_dir / "feature_manifest.json",
+        {
+            "log": log_manifest,
+            "embedding": embedding_manifest,
+            "kpi": kpi_manifest,
+            "intensity": intensity_manifest,
+            "pretrained_kpi": {
+                "path": cfg.pretrained_kpi_path,
+                "allow_feature_mismatch": cfg.allow_pretrained_kpi_feature_mismatch,
+                "freeze_epochs": cfg.freeze_pretrained_kpi_epochs,
+            },
+            "arrays": {k: list(v.shape) for k, v in arrays.items()},
+        },
+    )
 
     print("[5/7] Training HADES-like v2 seeds")
     results = []
     for seed in cfg.seeds:
-        results.append(train_one_seed(arrays, idx, cfg, seed, output_dir))
+        results.append(train_one_seed(arrays, idx, cfg, seed, output_dir, selected_kpi))
         gc.collect()
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
@@ -1566,7 +1672,14 @@ def main() -> None:
             "risk_intensity_median_seed": thr_r_intensity,
         },
         "split_summary": split_report.to_dict("records"),
-        "feature_manifest": {"log": log_manifest, "embedding": embedding_manifest, "kpi_shape": list(kpi_seq.shape), "kpi_feature_count": len(selected_kpi), "intensity": intensity_manifest},
+        "feature_manifest": {
+            "log": log_manifest,
+            "embedding": embedding_manifest,
+            "kpi_shape": list(kpi_seq.shape),
+            "kpi_feature_count": len(selected_kpi),
+            "intensity": intensity_manifest,
+            "pretrained_kpi_path": cfg.pretrained_kpi_path,
+        },
     }
     write_json(output_dir / "metrics_summary.json", summary)
     print(f"Done. Outputs written to: {output_dir}")
