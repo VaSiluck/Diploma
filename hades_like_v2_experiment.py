@@ -115,6 +115,11 @@ class RunConfig:
     anomaly_lambda: float
     consistency_lambda: float
     risk_recall_target: float
+    validation_strategy: str
+    validation_fraction: float
+    validation_seed: int
+    monitor_mode: str
+    top_fracs: list[float]
     seeds: list[int]
     max_rows: int | None
     device: str
@@ -662,6 +667,78 @@ def metrics_at_threshold(y, score, threshold):
     return {"precision": float(precision), "recall": float(recall), "f1": float(f1), "threshold": float(threshold)}
 
 
+def precision_at_fraction(y, score, fraction: float) -> dict:
+    y = np.asarray(y).astype(int)
+    score = np.asarray(score, dtype=float)
+    n = len(y)
+    if n == 0:
+        return {"top_fraction": float(fraction), "top_n": 0, "precision_at_top": None, "recall_at_top": None, "lift_vs_prevalence": None}
+    k = max(1, int(math.ceil(n * float(fraction))))
+    order = np.argsort(-np.nan_to_num(score, nan=-np.inf))[:k]
+    positives = int(y.sum())
+    top_pos = int(y[order].sum())
+    prevalence = float(y.mean()) if n else 0.0
+    precision = top_pos / k
+    recall = top_pos / positives if positives else None
+    lift = precision / prevalence if prevalence > 0 else None
+    return {
+        "top_fraction": float(fraction),
+        "top_n": int(k),
+        "top_positives": int(top_pos),
+        "precision_at_top": float(precision),
+        "recall_at_top": float(recall) if recall is not None else None,
+        "lift_vs_prevalence": float(lift) if lift is not None else None,
+    }
+
+
+def topk_diagnostics(pred: pd.DataFrame, top_fracs: list[float]) -> pd.DataFrame:
+    rows = []
+    target_score_pairs = [("y_warning", "warning_score"), ("y_risk", "risk_score")]
+    for target, score_col in target_score_pairs:
+        y = pred[target].astype(int).to_numpy()
+        score = pred[score_col].astype(float).to_numpy()
+        total_positive_runs = None
+        if "run_id" in pred.columns:
+            positive_runs = set(pred.loc[pred[target].astype(int).eq(1), "run_id"].astype(str))
+            total_positive_runs = len(positive_runs)
+            no_positive_runs = set(pred.groupby("run_id")[target].sum().loc[lambda s: s <= 0].index.astype(str))
+        else:
+            positive_runs = set()
+            no_positive_runs = set()
+        order_all = np.argsort(-np.nan_to_num(score, nan=-np.inf))
+        for frac in top_fracs:
+            row = precision_at_fraction(y, score, frac)
+            top_index = pred.index.to_numpy()[order_all[: row["top_n"]]]
+            row.update(
+                {
+                    "target": target,
+                    "score": score_col,
+                    "n": int(len(pred)),
+                    "positives": int(y.sum()),
+                    "prevalence": float(y.mean()) if len(y) else None,
+                }
+            )
+            if "run_id" in pred.columns:
+                top_runs = set(pred.loc[top_index, "run_id"].astype(str))
+                detected_positive_runs = top_runs & positive_runs
+                false_alarm_runs = top_runs & no_positive_runs
+                row.update(
+                    {
+                        "top_runs": int(len(top_runs)),
+                        "detected_positive_runs": int(len(detected_positive_runs)),
+                        "total_positive_runs": int(total_positive_runs),
+                        "detected_positive_run_share": (
+                            float(len(detected_positive_runs) / total_positive_runs)
+                            if total_positive_runs
+                            else None
+                        ),
+                        "false_alarm_runs_without_target": int(len(false_alarm_runs)),
+                    }
+                )
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
 def select_threshold(y, score, objective: str, min_recall: float = 0.8):
     y = np.asarray(y).astype(int)
     score = np.asarray(score, dtype=float)
@@ -679,8 +756,12 @@ def select_threshold(y, score, objective: str, min_recall: float = 0.8):
             best = feasible.sort_values(["precision", "f1", "threshold"], ascending=[False, False, False]).iloc[0]
             reason = "max_precision_under_recall"
     else:
-        best = table.sort_values(["f1", "precision"], ascending=[False, False]).iloc[0]
-        reason = "max_f1"
+        if objective == "precision_top":
+            best = table.sort_values(["precision", "recall", "f1"], ascending=[False, False, False]).iloc[0]
+            reason = "max_precision"
+        else:
+            best = table.sort_values(["f1", "precision"], ascending=[False, False]).iloc[0]
+            reason = "max_f1"
     return float(best["threshold"]), {"reason": reason, "val_precision": float(best["precision"]), "val_recall": float(best["recall"]), "val_f1": float(best["f1"])}
 
 
@@ -714,9 +795,17 @@ def predict(model, dataset, device, batch_size: int) -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True).sort_values("row_index").reset_index(drop=True)
 
 
-def monitor_score(pred: pd.DataFrame) -> float:
+def monitor_score(pred: pd.DataFrame, cfg: RunConfig) -> float:
     ap_w = safe_ap(pred["y_warning"], pred["warning_score"]) or 0.0
     ap_r = safe_ap(pred["y_risk"], pred["risk_score"]) or 0.0
+    risk_p5 = precision_at_fraction(pred["y_risk"], pred["risk_score"], 0.05)["precision_at_top"] or 0.0
+    warning_p10 = precision_at_fraction(pred["y_warning"], pred["warning_score"], 0.10)["precision_at_top"] or 0.0
+    if cfg.monitor_mode == "strict":
+        # Strict forecasting has weak hard-risk labels; choose checkpoints that
+        # preserve warning ranking while still rewarding early risk concentration.
+        return 0.50 * ap_w + 0.25 * ap_r + 0.15 * risk_p5 + 0.10 * warning_p10
+    if cfg.monitor_mode == "warning":
+        return 0.70 * ap_w + 0.15 * ap_r + 0.15 * warning_p10
     thr, _ = select_threshold(pred["y_risk"], pred["risk_score"], "risk_recall", min_recall=0.70)
     m = metrics_at_threshold(pred["y_risk"], pred["risk_score"], thr)
     return 0.45 * ap_w + 0.45 * ap_r + 0.10 * m["precision"]
@@ -762,10 +851,12 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
             opt.step()
             losses.append(parts["total"])
         val_pred = predict(model, val_ds, device, cfg.batch_size)
-        score = monitor_score(val_pred)
+        score = monitor_score(val_pred, cfg)
         scheduler.step(score)
         ap_w = safe_ap(val_pred["y_warning"], val_pred["warning_score"])
         ap_r = safe_ap(val_pred["y_risk"], val_pred["risk_score"])
+        val_risk_p5 = precision_at_fraction(val_pred["y_risk"], val_pred["risk_score"], 0.05)["precision_at_top"]
+        val_warning_p10 = precision_at_fraction(val_pred["y_warning"], val_pred["warning_score"], 0.10)["precision_at_top"]
         improved = score > best_score + 1e-5
         if improved:
             best_score = score
@@ -781,13 +872,15 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
                 "train_loss": float(np.mean(losses)) if losses else None,
                 "val_ap_warning": ap_w,
                 "val_ap_risk": ap_r,
+                "val_warning_precision_top10": val_warning_p10,
+                "val_risk_precision_top5": val_risk_p5,
                 "monitor_score": float(score),
                 "best_score": float(best_score),
                 "patience_left": int(patience_left),
                 "lr": float(opt.param_groups[0]["lr"]),
             }
         )
-        print(f"seed={seed} epoch={epoch:03d} loss={np.mean(losses):.4f} val_ap_w={ap_w:.4f} val_ap_r={ap_r:.4f} monitor={score:.4f} best={best_score:.4f} patience={patience_left}")
+        print(f"seed={seed} epoch={epoch:03d} loss={np.mean(losses):.4f} val_ap_w={ap_w:.4f} val_ap_r={ap_r:.4f} val_p10_w={val_warning_p10:.4f} val_p5_r={val_risk_p5:.4f} monitor={score:.4f} best={best_score:.4f} patience={patience_left}")
         if patience_left <= 0:
             break
     if best_state is not None:
@@ -797,11 +890,16 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
     thr_w, info_w = select_threshold(val_pred["y_warning"], val_pred["warning_score"], "f1")
     thr_r, info_r = select_threshold(val_pred["y_risk"], val_pred["risk_score"], "risk_recall", cfg.risk_recall_target + 0.05)
     test_pred["seed"] = seed
+    val_pred["seed"] = seed
     test_pred["threshold_warning"] = thr_w
     test_pred["threshold_risk"] = thr_r
+    val_pred["threshold_warning"] = thr_w
+    val_pred["threshold_risk"] = thr_r
     metrics = []
     for target, score_col, thr in [("y_warning", "warning_score", thr_w), ("y_risk", "risk_score", thr_r)]:
         m = metrics_at_threshold(test_pred[target], test_pred[score_col], thr)
+        p5 = precision_at_fraction(test_pred[target], test_pred[score_col], 0.05)
+        p10 = precision_at_fraction(test_pred[target], test_pred[score_col], 0.10)
         metrics.append(
             {
                 "seed": seed,
@@ -809,6 +907,10 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
                 "average_precision": safe_ap(test_pred[target], test_pred[score_col]),
                 "roc_auc": safe_roc(test_pred[target], test_pred[score_col]),
                 **m,
+                "precision_top5": p5["precision_at_top"],
+                "recall_top5": p5["recall_at_top"],
+                "precision_top10": p10["precision_at_top"],
+                "recall_top10": p10["recall_at_top"],
                 "best_epoch": int(best_epoch),
                 "best_monitor_score": float(best_score),
             }
@@ -819,6 +921,7 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
         "seed": seed,
         "model": model,
         "metrics": pd.DataFrame(metrics),
+        "val_pred": val_pred,
         "test_pred": test_pred,
         "thresholds": {"warning": thr_w, "risk": thr_r, "warning_info": info_w, "risk_info": info_r},
         "best_epoch": best_epoch,
@@ -827,7 +930,23 @@ def train_one_seed(arrays, idx, cfg: RunConfig, seed: int, output_dir: Path) -> 
 
 
 def add_contract_columns(pred: pd.DataFrame, frame: pd.DataFrame) -> pd.DataFrame:
-    meta_cols = ["run_id", "workload", "scenario", "window_ts", "split", "log_available", "kpi_available", "has_both_modalities"]
+    candidate_cols = [
+        "run_id",
+        "workload",
+        "scenario",
+        "scenario_type",
+        "failure_family",
+        "anchor_policy",
+        "strict_variant",
+        "strict_lead_gap_sec",
+        "strict_lead_sec",
+        "window_ts",
+        "split",
+        "log_available",
+        "kpi_available",
+        "has_both_modalities",
+    ]
+    meta_cols = [c for c in candidate_cols if c in frame.columns]
     meta = frame[meta_cols].copy()
     meta["row_index"] = np.arange(len(meta))
     return pred.merge(meta, on="row_index", how="left")
@@ -888,21 +1007,88 @@ def load_contract(path: Path, max_rows: int | None) -> pd.DataFrame:
                 keep.extend(rng.choice(rest, size=min(need, len(rest)), replace=False).tolist())
             parts.append(frame.loc[sorted(set(keep))])
         frame = pd.concat(parts).sort_values(["run_id", "window_ts", "window_index"]).reset_index(drop=True)
-    if "validation" not in set(frame["split"].astype(str)):
-        train_mask = frame["split"].astype(str).eq("train")
-        train_frame = frame.loc[train_mask].copy()
-        if train_frame["run_id"].nunique() < 2:
-            raise RuntimeError("Cannot derive validation split: train split has fewer than two run_id groups.")
-        splitter = GroupShuffleSplit(n_splits=1, test_size=0.2, random_state=42)
-        _, val_rel = next(splitter.split(train_frame, groups=train_frame["run_id"].astype(str)))
-        val_index = train_frame.index.to_numpy()[val_rel]
-        frame.loc[val_index, "split"] = "validation"
     frame["row_pos"] = np.arange(len(frame), dtype=np.int64)
     frame["log_text"] = frame.get("log_text", "").fillna("").astype(str)
     for col in ["log_available", "kpi_available", "has_both_modalities", "kpi_avail_ratio"]:
         if col not in frame.columns:
             frame[col] = 0.0
     return frame
+
+
+def apply_validation_split(frame: pd.DataFrame, strategy: str, fraction: float, seed: int) -> pd.DataFrame:
+    frame = frame.copy()
+    split_values = set(frame["split"].astype(str))
+    if strategy == "auto":
+        if "validation" in split_values:
+            return frame
+        strategy = "run_id_holdout"
+    if strategy == "existing":
+        if "validation" not in split_values:
+            raise RuntimeError("validation_strategy=existing requested, but contract has no validation split.")
+        return frame
+    train_mask = frame["split"].astype(str).eq("train")
+    train_frame = frame.loc[train_mask].copy()
+    if train_frame.empty:
+        raise RuntimeError("Cannot derive validation split: train split is empty.")
+    group_col = "workload" if strategy == "workload_holdout" else "run_id"
+    if group_col not in train_frame.columns:
+        raise RuntimeError(f"Cannot derive validation split: missing group column {group_col!r}.")
+    if train_frame[group_col].astype(str).nunique() < 2:
+        if strategy == "workload_holdout":
+            group_col = "run_id"
+        if train_frame[group_col].astype(str).nunique() < 2:
+            raise RuntimeError(f"Cannot derive validation split: {group_col} has fewer than two groups.")
+
+    splitter = GroupShuffleSplit(n_splits=64, test_size=float(fraction), random_state=int(seed))
+    best = None
+    best_score = -1e9
+    train_index = train_frame.index.to_numpy()
+    groups = train_frame[group_col].astype(str)
+    for tr_rel, val_rel in splitter.split(train_frame, groups=groups):
+        tr = train_frame.iloc[tr_rel]
+        val = train_frame.iloc[val_rel]
+        score = 0.0
+        for target in ["y_warning", "y_risk"]:
+            tr_pos = int(tr[target].sum())
+            val_pos = int(val[target].sum())
+            if tr[target].nunique() == 2:
+                score += 1.0
+            if val[target].nunique() == 2:
+                score += 2.0
+            score += min(val_pos, 20) / 20.0
+            score += min(tr_pos, 20) / 40.0
+        size_penalty = abs((len(val) / max(len(train_frame), 1)) - float(fraction))
+        score -= size_penalty
+        if score > best_score:
+            best_score = score
+            best = val_rel
+    if best is None:
+        raise RuntimeError("Cannot derive validation split: GroupShuffleSplit produced no split.")
+    val_index = train_index[best]
+    frame.loc[val_index, "split"] = "validation"
+    frame["validation_group_column"] = group_col
+    frame["validation_strategy"] = strategy
+    return frame
+
+
+def split_summary(frame: pd.DataFrame) -> pd.DataFrame:
+    rows = []
+    for split, part in frame.groupby("split", sort=False):
+        rows.append(
+            {
+                "split": split,
+                "rows": int(len(part)),
+                "runs": int(part["run_id"].nunique()) if "run_id" in part else None,
+                "workloads": int(part["workload"].nunique()) if "workload" in part else None,
+                "warning_positives": int(part["y_warning"].sum()),
+                "risk_positives": int(part["y_risk"].sum()),
+                "warning_prevalence": float(part["y_warning"].mean()),
+                "risk_prevalence": float(part["y_risk"].mean()),
+                "log_available": float(part["log_available"].mean()) if "log_available" in part else None,
+                "both_modalities": float(part["has_both_modalities"].mean()) if "has_both_modalities" in part else None,
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def split_indices(frame: pd.DataFrame) -> dict[str, np.ndarray]:
@@ -970,6 +1156,11 @@ def main() -> None:
     parser.add_argument("--anomaly-lambda", type=float, default=0.15)
     parser.add_argument("--consistency-lambda", type=float, default=0.10)
     parser.add_argument("--risk-recall-target", type=float, default=0.80)
+    parser.add_argument("--validation-strategy", choices=["auto", "existing", "run_id_holdout", "workload_holdout"], default="auto")
+    parser.add_argument("--validation-fraction", type=float, default=0.20)
+    parser.add_argument("--validation-seed", type=int, default=42)
+    parser.add_argument("--monitor-mode", choices=["balanced", "strict", "warning"], default="balanced")
+    parser.add_argument("--top-fracs", default="0.01,0.05,0.10")
     parser.add_argument("--seeds", default="42,43,44")
     parser.add_argument("--max-rows", type=int, default=None)
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
@@ -1013,6 +1204,11 @@ def main() -> None:
         anomaly_lambda=args.anomaly_lambda,
         consistency_lambda=args.consistency_lambda,
         risk_recall_target=args.risk_recall_target,
+        validation_strategy=args.validation_strategy,
+        validation_fraction=args.validation_fraction,
+        validation_seed=args.validation_seed,
+        monitor_mode=args.monitor_mode,
+        top_fracs=[float(s.strip()) for s in args.top_fracs.split(",") if s.strip()],
         seeds=[int(s.strip()) for s in args.seeds.split(",") if s.strip()],
         max_rows=args.max_rows,
         device=args.device,
@@ -1020,8 +1216,12 @@ def main() -> None:
     write_json(output_dir / "run_config.json", asdict(cfg))
     print(f"[1/7] Loading contract: {contract_path}")
     frame = load_contract(contract_path, max_rows=cfg.max_rows)
+    frame = apply_validation_split(frame, cfg.validation_strategy, cfg.validation_fraction, cfg.validation_seed)
     idx = split_indices(frame)
     print(f"rows={len(frame)} train={len(idx['train'])} val={len(idx['validation'])} test={len(idx['test'])}")
+    split_report = split_summary(frame)
+    split_report.to_csv(output_dir / "split_summary.csv", index=False)
+    print(split_report.to_string(index=False))
 
     print("[2/7] Building raw log event sequence")
     log_text_rows, log_mask, log_manifest = build_log_event_matrix(frame, root / "raw_data", cfg.top_log_events, cfg.log_context_sec)
@@ -1070,9 +1270,13 @@ def main() -> None:
     seed_metrics.to_csv(output_dir / "seed_metrics.csv", index=False)
     all_test_pred = pd.concat([r["test_pred"] for r in results], ignore_index=True)
     all_test_pred.to_csv(output_dir / "seed_predictions.csv", index=False)
+    all_val_pred = pd.concat([r["val_pred"] for r in results], ignore_index=True)
+    all_val_pred.to_csv(output_dir / "validation_seed_predictions.csv", index=False)
 
     ensemble = all_test_pred.groupby("row_index", as_index=False).mean(numeric_only=True)
     ensemble = add_contract_columns(ensemble, frame)
+    val_ensemble = all_val_pred.groupby("row_index", as_index=False).mean(numeric_only=True)
+    val_ensemble = add_contract_columns(val_ensemble, frame)
     # Thresholds from ensemble test are not leakage-free; final AP is threshold-free.
     # For F1/recall, use median seed thresholds to avoid tuning on test.
     thr_w = float(np.median([r["thresholds"]["warning"] for r in results]))
@@ -1084,24 +1288,34 @@ def main() -> None:
     ensemble_metrics = pd.DataFrame(ensemble_metrics)
     slices = evaluate_slices(ensemble, thr_w, thr_r)
     baseline_df = baseline_comparison(frame, baseline_path, idx["test"])
+    ranking = topk_diagnostics(ensemble, cfg.top_fracs)
+    ranking["split"] = "test"
+    val_ranking = topk_diagnostics(val_ensemble, cfg.top_fracs)
+    val_ranking["split"] = "validation"
+    ranking_all = pd.concat([val_ranking, ranking], ignore_index=True)
 
     print("[7/7] Writing outputs")
     ensemble.to_csv(output_dir / "ensemble_predictions.csv", index=False)
+    val_ensemble.to_csv(output_dir / "validation_ensemble_predictions.csv", index=False)
     ensemble_metrics.to_csv(output_dir / "ensemble_metrics.csv", index=False)
     slices.to_csv(output_dir / "slice_metrics.csv", index=False)
+    ranking_all.to_csv(output_dir / "ranking_diagnostics.csv", index=False)
     baseline_df.to_csv(output_dir / "baseline_comparison.csv", index=False)
     summary = {
         "run_id": cfg.run_id,
         "seed_metrics": seed_metrics.to_dict("records"),
         "ensemble_metrics": ensemble_metrics.to_dict("records"),
         "slice_metrics": slices.to_dict("records"),
+        "ranking_diagnostics": ranking_all.to_dict("records"),
         "baseline_comparison": baseline_df.to_dict("records"),
         "thresholds": {"warning_median_seed": thr_w, "risk_median_seed": thr_r},
+        "split_summary": split_report.to_dict("records"),
         "feature_manifest": {"log": log_manifest, "embedding": embedding_manifest, "kpi_shape": list(kpi_seq.shape), "kpi_feature_count": len(selected_kpi)},
     }
     write_json(output_dir / "metrics_summary.json", summary)
     print(f"Done. Outputs written to: {output_dir}")
     print(ensemble_metrics.to_string(index=False))
+    print(ranking_all.to_string(index=False))
     if not baseline_df.empty:
         print(baseline_df.to_string(index=False))
 
