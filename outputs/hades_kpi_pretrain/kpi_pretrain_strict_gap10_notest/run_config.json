@@ -1,0 +1,35 @@
+{
+  "run_id": "kpi_pretrain_strict_gap10_notest",
+  "root": "C:\\Users\\а\\main\\Diploma",
+  "hades_kpi_root": "C:\\Users\\а\\main\\Diploma\\hades_data\\data\\labeled_csv\\kpi_csv",
+  "reference_contract_path": "outputs\\strict_forecast\\strict_forecast_01\\contracts\\strict_explicit_only_gap10.csv.gz",
+  "selected_kpi_features_path": "outputs\\hades_like_v2\\hades_v2_strict_intensity_gap10\\feature_manifest.json",
+  "output_dir": "outputs\\hades_kpi_pretrain\\kpi_pretrain_strict_gap10_notest",
+  "window_sec": 10,
+  "stride_sec": 5,
+  "seq_len": 12,
+  "max_kpi_features": 192,
+  "hidden_dim": 128,
+  "heads": 4,
+  "batch_size": 256,
+  "epochs": 80,
+  "patience": 14,
+  "lr": 0.0008,
+  "weight_decay": 5e-05,
+  "validation_fraction": 0.2,
+  "validation_seed": 42,
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "max_scenarios": null,
+  "exclude_workloads": [
+    "aggregation",
+    "join",
+    "rf",
+    "svd"
+  ],
+  "exclude_reference_test_workloads": true,
+  "device": "cuda"
+}
