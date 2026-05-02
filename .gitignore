@@ -1,8 +1,11 @@
 ﻿# Raw datasets and generated research artifacts
 raw_data/
 raw_data.rar
+dashboard/artifacts/
 outputs/
 lcman/outputs/
+hades_data
+.research_archive/
 
 # Local dashboard/runtime caches
 .cache/
