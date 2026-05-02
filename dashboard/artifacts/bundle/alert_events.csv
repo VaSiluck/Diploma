@@ -1,0 +1,52 @@
+run_id,workload,scenario,scenario_type,event_type,first_alert_ts,event_anchor,lead_time_sec,n_windows,alert_windows,max_model_score
+aggregation/normal1,aggregation,normal1,normal,normal_no_alert,,,,9,0,0.7117296222664016
+aggregation/normal2,aggregation,normal2,normal,normal_no_alert,,,,10,0,0.9443339960238568
+aggregation/datanode_killed,aggregation,datanode_killed,failure,missed_failure,,2021-10-20 12:16:13+00:00,,6,0,0.8906560636182903
+aggregation/normal3,aggregation,normal3,normal,normal_no_alert,,,,9,0,0.9145129224652088
+aggregation/normal4,aggregation,normal4,normal,normal_no_alert,,,,14,0,0.9363817097415507
+aggregation/normal5,aggregation,normal5,normal,normal_no_alert,,,,9,0,0.9701789264413518
+aggregation/vm_stress,aggregation,vm_stress,failure,missed_failure,,2021-10-20 12:44:46+00:00,,5,0,0.7614314115308151
+aggregation/normal6,aggregation,normal6,normal,normal_no_alert,,,,12,0,0.878727634194831
+aggregation/resourcemanager_suspended,aggregation,resourcemanager_suspended,failure,missed_failure,,2021-10-20 13:02:53+00:00,,5,0,0.9463220675944334
+aggregation/normal7,aggregation,normal7,normal,normal_no_alert,,,,9,0,0.9145129224652088
+join/normal1,join,normal1,normal,normal_no_alert,,,,9,0,0.7216699801192843
+join/normal2,join,normal2,normal,normal_no_alert,,,,10,0,0.94831013916501
+join/datanode_killed,join,datanode_killed,failure,missed_failure,,2021-10-22 09:31:26+00:00,,5,0,0.8489065606361829
+join/normal3,join,normal3,normal,normal_no_alert,,,,9,0,0.9065606361829026
+join/normal4,join,normal4,normal,normal_no_alert,,,,9,0,0.8608349900596421
+join/net_killed,join,net_killed,failure,early_alert,2021-10-22 09:48:00+00:00,2021-10-22 09:49:21+00:00,81.0,12,2,0.9900596421471173
+join/normal5,join,normal5,normal,normal_no_alert,,,,9,0,1.0
+join/mq_stress,join,mq_stress,failure,missed_failure,,2021-10-22 10:06:21+00:00,,7,0,0.94831013916501
+join/normal6,join,normal6,normal,normal_no_alert,,,,10,0,0.9781312127236581
+join/master_killed,join,master_killed,failure,early_alert,2021-10-22 10:13:20+00:00,2021-10-22 10:15:14+00:00,114.0,11,1,0.9821073558648111
+join/normal7,join,normal7,normal,normal_no_alert,,,,11,0,0.9105367793240556
+rf/normal1,rf,normal1,normal,normal_no_alert,,,,6,0,0.8608349900596421
+rf/normal2,rf,normal2,normal,normal_no_alert,,,,5,0,0.8687872763419483
+rf/datanode_killed,rf,datanode_killed,failure,missed_failure,,2021-10-25 04:51:06+00:00,,2,0,0.9562624254473161
+rf/normal3,rf,normal3,normal,normal_no_alert,,,,5,0,0.9443339960238568
+rf/normal4,rf,normal4,normal,normal_no_alert,,,,6,0,0.9443339960238568
+rf/normal5,rf,normal5,normal,normal_no_alert,,,,6,0,0.8727634194831014
+rf/normal6,rf,normal6,normal,normal_no_alert,,,,7,0,0.9602385685884692
+rf/normal7,rf,normal7,normal,false_alert,2021-10-25 05:33:50+00:00,,,7,1,0.9821073558648111
+svd/normal1,svd,normal1,normal,normal_no_alert,,,,51,0,0.9304174950298211
+svd/datanode_suspended,svd,datanode_suspended,failure,missed_failure,,2021-10-25 06:16:32+00:00,,1,0,0.7157057654075547
+svd/worker_killed,svd,worker_killed,failure,missed_failure,,2021-10-25 06:34:35+00:00,,1,0,0.9343936381709742
+svd/nodemanager_killed,svd,nodemanager_killed,failure,missed_failure,,2021-10-25 06:43:40+00:00,,1,0,0.94831013916501
+svd/datanode_killed,svd,datanode_killed,failure,missed_failure,,2021-10-25 06:53:00+00:00,,1,0,0.94831013916501
+svd/2nd_namenode_suspended,svd,2nd_namenode_suspended,failure,missed_failure,,2021-10-25 07:20:16+00:00,,1,0,0.94831013916501
+svd/2nd_namenode_killed,svd,2nd_namenode_killed,failure,missed_failure,,2021-10-25 07:29:13+00:00,,1,0,0.8747514910536779
+svd/normal4,svd,normal4,normal,false_alert,2021-10-25 07:38:50+00:00,,,51,2,0.9980119284294234
+svd/lose_package,svd,lose_package,failure,early_alert,2021-10-25 07:47:50+00:00,2021-10-25 07:49:01+00:00,71.0,7,1,0.9642147117296223
+svd/net_delay,svd,net_delay,failure,missed_failure,,2021-10-25 07:58:03+00:00,,1,0,0.9145129224652088
+svd/net_killed,svd,net_killed,failure,missed_failure,,2021-10-25 08:07:03+00:00,,1,0,0.8687872763419483
+svd/normal3,svd,normal3,normal,false_alert,2021-10-25 08:26:00+00:00,,,52,2,1.0
+svd/cpu_stress,svd,cpu_stress,failure,missed_failure,,2021-10-25 08:36:23+00:00,,6,0,0.9642147117296223
+svd/memory_stress,svd,memory_stress,failure,missed_failure,,2021-10-25 08:45:20+00:00,,2,0,0.8687872763419483
+svd/vm_stress,svd,vm_stress,failure,missed_failure,,2021-10-25 08:58:20+00:00,,1,0,0.8687872763419483
+svd/io_stress,svd,io_stress,failure,missed_failure,,2021-10-25 09:06:25+00:00,,1,0,0.9443339960238568
+svd/mq_stress,svd,mq_stress,failure,missed_failure,,2021-10-25 09:18:04+00:00,,6,0,0.9642147117296223
+svd/slow_stress,svd,slow_stress,failure,missed_failure,,2021-10-25 09:26:56+00:00,,1,0,0.8230616302186878
+svd/master_killed,svd,master_killed,failure,missed_failure,,2021-10-25 09:44:50+00:00,,1,0,0.9443339960238568
+svd/resourcemanager_suspended,svd,resourcemanager_suspended,failure,missed_failure,,2021-10-25 09:57:54+00:00,,1,0,0.8508946322067594
+svd/namenode_suspended,svd,namenode_suspended,failure,missed_failure,,2021-10-25 10:05:02+00:00,,1,0,0.9701789264413518
+svd/normal2,svd,normal2,normal,normal_no_alert,,,,45,0,0.9701789264413518

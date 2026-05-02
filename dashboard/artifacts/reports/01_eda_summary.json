@@ -1,0 +1,24 @@
+{
+  "raw_data": "raw_data",
+  "strict_runs": 440,
+  "workloads": 16,
+  "normal_runs": 88,
+  "failure_runs": 352,
+  "log_stats": {
+    "parsed_runs": 436,
+    "median_duration_sec": 73.0,
+    "median_log_events": 329.0,
+    "explicit_anchor_failure_share": 0.40229885057471265
+  },
+  "kpi_stats": {
+    "files": 13200,
+    "metrics": [
+      "cpustat",
+      "iostat",
+      "memstat",
+      "netstat",
+      "vmstat"
+    ],
+    "hosts": 6
+  }
+}

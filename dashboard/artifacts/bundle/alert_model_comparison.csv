@@ -1,0 +1,11 @@
+target,baseline,score_name,average_precision,roc_auc,precision,recall,f1,prevalence
+y_warning,final-multimodal-strict-intensity-fusion,warning_intensity_score,0.4491343568418161,0.8472259933025613,,,,
+y_risk,final-multimodal-state-score,state_score,0.1755765401315026,0.7925336597307222,,,,
+y_warning,log-only,,0.3490326748957467,0.6725797206383685,,,,
+y_warning,kpi-only,,0.3308342115625137,0.7352098229100671,,,,
+y_warning,fused,,0.3367712784896761,0.7387395541074607,,,,
+y_warning,availability-only,,0.1772479347516846,0.3333031646906206,,,,
+y_risk,log-only,,0.2332490671144373,0.7760403916768667,,,,
+y_risk,kpi-only,,0.1666044195264969,0.647674418604651,,,,
+y_risk,fused,,0.1735306935258132,0.6548347613219095,,,,
+y_risk,availability-only,,0.0751952244277044,0.3347001223990208,,,,

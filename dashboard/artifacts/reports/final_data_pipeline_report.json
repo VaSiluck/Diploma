@@ -1,0 +1,1052 @@
+{
+  "status": "ok",
+  "artifact_dir": "dashboard\\artifacts",
+  "contract": {
+    "source": "raw_data",
+    "contract_path": "dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
+    "rows": 2378,
+    "runs": 218,
+    "workloads": 16,
+    "windows": {
+      "micro_window_sec": 10,
+      "macro_window_sec": 60
+    },
+    "target_policy": {
+      "variant": "strict_intensity_gap10",
+      "gap_sec": 10,
+      "warning_horizon_sec": 120,
+      "risk_horizon_sec": 30
+    },
+    "coverage": {
+      "log_available_share": 0.7510513036164844,
+      "kpi_available_share": 0.971825063078217,
+      "both_modalities_share": 0.7228763666947015
+    },
+    "targets": {
+      "warning_share": 0.30992430613961314,
+      "risk_share": 0.10050462573591253
+    },
+    "split_rows": {
+      "test": 468,
+      "train": 1407,
+      "validation": 503
+    },
+    "split_runs": {
+      "test": 51,
+      "train": 114,
+      "validation": 53
+    },
+    "inventory": {
+      "rows": 454,
+      "strict_runs": 440,
+      "issues": 9,
+      "excluded_runs": [
+        {
+          "run_id": "aggregation/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/cpu_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/datanode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/net_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/nodemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "aggregation/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "bayes/datanode_killed",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "graph_pagerank/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/resourcemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "graph_pagerank/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/cpu_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/datanode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/nodemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/resourcemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "join/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/cpu_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/datanode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/datanode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/io_stress",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "lda/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/memory_stress",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "lda/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/net_delay",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "lda/net_killed",
+          "reason": "no timestamped log events"
+        },
+        {
+          "run_id": "lda/resourcemanager_suspended",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "lda/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "lda/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "nweight/net_delay",
+          "reason": "no timestamped log events"
+        },
+        {
+          "run_id": "repartition/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/cpu_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/datanode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/lose_package",
+          "reason": "no timestamped log events"
+        },
+        {
+          "run_id": "repartition/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/mq_stress",
+          "reason": "no timestamped log events"
+        },
+        {
+          "run_id": "repartition/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/net_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/resourcemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "repartition/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/cpu_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/datanode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/net_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/nodemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/resourcemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "rf/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/cpu_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/datanode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/net_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/nodemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/resourcemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "scan/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/cpu_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/datanode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/datanode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/net_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/nodemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/resourcemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sleep/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/cpu_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/datanode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/net_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/nodemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/resourcemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "sort/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "svd/late_sub",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "svd/master_suspended",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "svd/nodemanager_suspended",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "svd/worker_suspended",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "terasort/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/master_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "terasort/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/datanode_killed",
+          "reason": "no windows after gap policy"
+        },
+        {
+          "run_id": "web_pagerank/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/net_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/nodemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/resourcemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "web_pagerank/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/2nd_namenode_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/2nd_namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/datanode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/io_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/late_sub",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/lose_package",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/master_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/memory_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/mq_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/namenode_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/net_delay",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/net_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/nodemanager_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/nodemanager_suspended",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/slow_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/vm_stress",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/worker_killed",
+          "reason": "failure run without explicit log anchor"
+        },
+        {
+          "run_id": "wordcount/worker_suspended",
+          "reason": "failure run without explicit log anchor"
+        }
+      ]
+    }
+  },
+  "baseline_rows": 8,
+  "written_files": {
+    "contract": "dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
+    "contract_summary": "dashboard\\artifacts\\contract\\strict_contract_summary.csv",
+    "baseline_summary": "dashboard\\artifacts\\reports\\baseline_summary_metrics.json",
+    "baseline_comparison": "dashboard\\artifacts\\reports\\baseline_comparison_compact.csv",
+    "baseline_predictions": "dashboard\\artifacts\\reports\\baseline_predictions.csv.gz",
+    "pipeline_report": "dashboard\\artifacts\\reports\\final_data_pipeline_report.json"
+  },
+  "baseline": {
+    "source": "dashboard.final_data_pipeline",
+    "contract_path": "dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
+    "baseline_predictions_path": "dashboard\\artifacts\\reports\\baseline_predictions.csv.gz",
+    "baseline_comparison_path": "dashboard\\artifacts\\reports\\baseline_comparison_compact.csv",
+    "baseline_metrics": [
+      {
+        "target": "y_risk",
+        "baseline": "log-only",
+        "average_precision": 0.23324906711443738,
+        "roc_auc": 0.7760403916768667,
+        "precision": 0.10631229235880399,
+        "recall": 0.8421052631578947,
+        "f1": 0.1887905604719764,
+        "n": 468,
+        "positives": 38,
+        "prevalence": 0.0811965811965812
+      },
+      {
+        "target": "y_risk",
+        "baseline": "fused",
+        "average_precision": 0.17353069352581327,
+        "roc_auc": 0.6548347613219095,
+        "precision": 0.09210526315789473,
+        "recall": 0.7368421052631579,
+        "f1": 0.16374269005847952,
+        "n": 468,
+        "positives": 38,
+        "prevalence": 0.0811965811965812
+      },
+      {
+        "target": "y_risk",
+        "baseline": "kpi-only",
+        "average_precision": 0.16660441952649696,
+        "roc_auc": 0.647674418604651,
+        "precision": 0.0989399293286219,
+        "recall": 0.7368421052631579,
+        "f1": 0.17445482866043613,
+        "n": 468,
+        "positives": 38,
+        "prevalence": 0.0811965811965812
+      },
+      {
+        "target": "y_risk",
+        "baseline": "availability-only",
+        "average_precision": 0.07519522442770445,
+        "roc_auc": 0.3347001223990208,
+        "precision": 0.07657657657657657,
+        "recall": 0.8947368421052632,
+        "f1": 0.14107883817427386,
+        "n": 468,
+        "positives": 38,
+        "prevalence": 0.0811965811965812
+      },
+      {
+        "target": "y_warning",
+        "baseline": "log-only",
+        "average_precision": 0.3490326748957467,
+        "roc_auc": 0.6725797206383685,
+        "precision": 0.23954372623574144,
+        "recall": 0.7241379310344828,
+        "f1": 0.36,
+        "n": 468,
+        "positives": 87,
+        "prevalence": 0.1858974358974359
+      },
+      {
+        "target": "y_warning",
+        "baseline": "fused",
+        "average_precision": 0.3367712784896761,
+        "roc_auc": 0.7387395541074607,
+        "precision": 0.3170731707317073,
+        "recall": 0.2988505747126437,
+        "f1": 0.3076923076923077,
+        "n": 468,
+        "positives": 87,
+        "prevalence": 0.1858974358974359
+      },
+      {
+        "target": "y_warning",
+        "baseline": "kpi-only",
+        "average_precision": 0.33083421156251364,
+        "roc_auc": 0.7352098229100671,
+        "precision": 0.3442622950819672,
+        "recall": 0.2413793103448276,
+        "f1": 0.28378378378378377,
+        "n": 468,
+        "positives": 87,
+        "prevalence": 0.1858974358974359
+      },
+      {
+        "target": "y_warning",
+        "baseline": "availability-only",
+        "average_precision": 0.17724793475168463,
+        "roc_auc": 0.3333031646906206,
+        "precision": 0.020689655172413793,
+        "recall": 0.034482758620689655,
+        "f1": 0.02586206896551724,
+        "n": 468,
+        "positives": 87,
+        "prevalence": 0.1858974358974359
+      }
+    ],
+    "windows": {
+      "micro_window_sec": 10,
+      "macro_window_sec": 60
+    }
+  }
+}

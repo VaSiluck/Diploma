@@ -1,0 +1,106 @@
+{
+  "model_name": "Мультимодальная strict-intensity fusion",
+  "model_family": "final_multimodal_strict_intensity_fusion",
+  "run_id": "final_multimodal_strict_intensity_gap10",
+  "source_dir": "dashboard\\artifacts\\model\\final_multimodal_strict_intensity_gap10",
+  "contract_path": "dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
+  "contract_mode": "strict_explicit_only_gap10",
+  "primary_dashboard_score": "warning_intensity_score",
+  "diagnostic_risk_channel": "state_score",
+  "score_source": "model_store",
+  "proxy_fallback_windows": 0,
+  "alert_layer": {
+    "watch_threshold": 0.85,
+    "alert_threshold": 0.95,
+    "min_consecutive_windows": 2.0,
+    "raw_score_q85": 0.24778531599999992,
+    "raw_score_q95": 0.5726279239999996
+  },
+  "run_level_metrics": [
+    {
+      "model": "final-multimodal-strict-intensity-fusion",
+      "failure_runs": 26,
+      "normal_runs": 25,
+      "failure_run_recall": 0.11538461538461539,
+      "run_alert_precision": 0.5,
+      "run_alert_f1": 0.1875,
+      "false_alert_run_rate": 0.12,
+      "alert_density": 0.019230769230769232,
+      "median_lead_time_sec": 81.0,
+      "alert_events": 6
+    }
+  ],
+  "strict_research_metrics": [
+    {
+      "target": "y_warning",
+      "baseline": "final-multimodal-strict-intensity-fusion",
+      "score_name": "warning_intensity_score",
+      "average_precision": 0.4491343568418161,
+      "roc_auc": 0.8472259933025613,
+      "precision": NaN,
+      "recall": NaN,
+      "f1": NaN,
+      "prevalence": NaN
+    },
+    {
+      "target": "y_risk",
+      "baseline": "final-multimodal-state-score",
+      "score_name": "state_score",
+      "average_precision": 0.1755765401315026,
+      "roc_auc": 0.7925336597307222,
+      "precision": NaN,
+      "recall": NaN,
+      "f1": NaN,
+      "prevalence": NaN
+    },
+    {
+      "target": "y_warning",
+      "baseline": "log-only",
+      "average_precision": 0.3490326748957467,
+      "roc_auc": 0.6725797206383685
+    },
+    {
+      "target": "y_warning",
+      "baseline": "kpi-only",
+      "average_precision": 0.3308342115625137,
+      "roc_auc": 0.7352098229100671
+    },
+    {
+      "target": "y_warning",
+      "baseline": "fused",
+      "average_precision": 0.3367712784896761,
+      "roc_auc": 0.7387395541074607
+    },
+    {
+      "target": "y_warning",
+      "baseline": "availability-only",
+      "average_precision": 0.1772479347516846,
+      "roc_auc": 0.3333031646906206
+    },
+    {
+      "target": "y_risk",
+      "baseline": "log-only",
+      "average_precision": 0.2332490671144373,
+      "roc_auc": 0.7760403916768667
+    },
+    {
+      "target": "y_risk",
+      "baseline": "kpi-only",
+      "average_precision": 0.1666044195264969,
+      "roc_auc": 0.647674418604651
+    },
+    {
+      "target": "y_risk",
+      "baseline": "fused",
+      "average_precision": 0.1735306935258132,
+      "roc_auc": 0.6548347613219095
+    },
+    {
+      "target": "y_risk",
+      "baseline": "availability-only",
+      "average_precision": 0.0751952244277044,
+      "roc_auc": 0.3347001223990208
+    }
+  ],
+  "baseline_diagnostics": []
+}

@@ -1,0 +1,2 @@
+model,failure_runs,normal_runs,failure_run_recall,run_alert_precision,run_alert_f1,false_alert_run_rate,alert_density,median_lead_time_sec,alert_events
+final-multimodal-strict-intensity-fusion,26,25,0.11538461538461539,0.5,0.1875,0.12,0.019230769230769232,81.0,6
