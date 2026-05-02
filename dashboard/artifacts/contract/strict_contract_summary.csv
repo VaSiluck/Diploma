@@ -1,0 +1,9 @@
+metric,value
+rows,2378.0
+runs,218.0
+workloads,16.0
+warning_share,0.30992430613961314
+risk_share,0.10050462573591253
+log_available_share,0.7510513036164844
+kpi_available_share,0.971825063078217
+both_modalities_share,0.7228763666947015

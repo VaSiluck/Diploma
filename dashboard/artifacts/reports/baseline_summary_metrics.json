@@ -1,0 +1,108 @@
+{
+  "source": "dashboard.final_data_pipeline",
+  "contract_path": "dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
+  "baseline_predictions_path": "dashboard\\artifacts\\reports\\baseline_predictions.csv.gz",
+  "baseline_comparison_path": "dashboard\\artifacts\\reports\\baseline_comparison_compact.csv",
+  "baseline_metrics": [
+    {
+      "target": "y_risk",
+      "baseline": "log-only",
+      "average_precision": 0.23324906711443738,
+      "roc_auc": 0.7760403916768667,
+      "precision": 0.10631229235880399,
+      "recall": 0.8421052631578947,
+      "f1": 0.1887905604719764,
+      "n": 468,
+      "positives": 38,
+      "prevalence": 0.0811965811965812
+    },
+    {
+      "target": "y_risk",
+      "baseline": "fused",
+      "average_precision": 0.17353069352581327,
+      "roc_auc": 0.6548347613219095,
+      "precision": 0.09210526315789473,
+      "recall": 0.7368421052631579,
+      "f1": 0.16374269005847952,
+      "n": 468,
+      "positives": 38,
+      "prevalence": 0.0811965811965812
+    },
+    {
+      "target": "y_risk",
+      "baseline": "kpi-only",
+      "average_precision": 0.16660441952649696,
+      "roc_auc": 0.647674418604651,
+      "precision": 0.0989399293286219,
+      "recall": 0.7368421052631579,
+      "f1": 0.17445482866043613,
+      "n": 468,
+      "positives": 38,
+      "prevalence": 0.0811965811965812
+    },
+    {
+      "target": "y_risk",
+      "baseline": "availability-only",
+      "average_precision": 0.07519522442770445,
+      "roc_auc": 0.3347001223990208,
+      "precision": 0.07657657657657657,
+      "recall": 0.8947368421052632,
+      "f1": 0.14107883817427386,
+      "n": 468,
+      "positives": 38,
+      "prevalence": 0.0811965811965812
+    },
+    {
+      "target": "y_warning",
+      "baseline": "log-only",
+      "average_precision": 0.3490326748957467,
+      "roc_auc": 0.6725797206383685,
+      "precision": 0.23954372623574144,
+      "recall": 0.7241379310344828,
+      "f1": 0.36,
+      "n": 468,
+      "positives": 87,
+      "prevalence": 0.1858974358974359
+    },
+    {
+      "target": "y_warning",
+      "baseline": "fused",
+      "average_precision": 0.3367712784896761,
+      "roc_auc": 0.7387395541074607,
+      "precision": 0.3170731707317073,
+      "recall": 0.2988505747126437,
+      "f1": 0.3076923076923077,
+      "n": 468,
+      "positives": 87,
+      "prevalence": 0.1858974358974359
+    },
+    {
+      "target": "y_warning",
+      "baseline": "kpi-only",
+      "average_precision": 0.33083421156251364,
+      "roc_auc": 0.7352098229100671,
+      "precision": 0.3442622950819672,
+      "recall": 0.2413793103448276,
+      "f1": 0.28378378378378377,
+      "n": 468,
+      "positives": 87,
+      "prevalence": 0.1858974358974359
+    },
+    {
+      "target": "y_warning",
+      "baseline": "availability-only",
+      "average_precision": 0.17724793475168463,
+      "roc_auc": 0.3333031646906206,
+      "precision": 0.020689655172413793,
+      "recall": 0.034482758620689655,
+      "f1": 0.02586206896551724,
+      "n": 468,
+      "positives": 87,
+      "prevalence": 0.1858974358974359
+    }
+  ],
+  "windows": {
+    "micro_window_sec": 10,
+    "macro_window_sec": 60
+  }
+}
