@@ -1,8 +1,0 @@
-{
-  "strict_explicit_only_gap0": "outputs\\strict_forecast\\strict_forecast_01\\contracts\\strict_explicit_only_gap0.csv.gz",
-  "strict_explicit_only_gap10": "outputs\\strict_forecast\\strict_forecast_01\\contracts\\strict_explicit_only_gap10.csv.gz",
-  "strict_explicit_only_gap20": "outputs\\strict_forecast\\strict_forecast_01\\contracts\\strict_explicit_only_gap20.csv.gz",
-  "strict_all_anchors_gap0": "outputs\\strict_forecast\\strict_forecast_01\\contracts\\strict_all_anchors_gap0.csv.gz",
-  "strict_all_anchors_gap10": "outputs\\strict_forecast\\strict_forecast_01\\contracts\\strict_all_anchors_gap10.csv.gz",
-  "strict_all_anchors_gap20": "outputs\\strict_forecast\\strict_forecast_01\\contracts\\strict_all_anchors_gap20.csv.gz"
-}
