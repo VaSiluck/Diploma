@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import argparse
 from pathlib import Path
 from typing import Any
 
@@ -9,9 +11,23 @@ import pandas as pd
 
 
 ROOT = Path(__file__).resolve().parents[1]
-STRICT_DIR = ROOT / "outputs" / "hades_like_v2" / "hades_v2_strict_intensity_gap10"
-RAW_CONTRACT_PATH = ROOT / "outputs" / "raw_multirate" / "aligned_multirate_windows.csv"
-OUT_DIR = ROOT / "outputs" / "final_alert_system"
+DEFAULT_ARTIFACT_DIR = ROOT / "dashboard" / "artifacts"
+ARTIFACT_DIR = Path(os.environ.get("DASHBOARD_ARTIFACT_DIR", DEFAULT_ARTIFACT_DIR))
+if not ARTIFACT_DIR.is_absolute():
+    ARTIFACT_DIR = ROOT / ARTIFACT_DIR
+MODEL_RUN_DIR = Path(
+    os.environ.get(
+        "FINAL_MULTIMODAL_RUN_DIR",
+        ARTIFACT_DIR / "model" / "final_multimodal_strict_intensity_gap10",
+    )
+)
+STRICT_CONTRACT_PATH = Path(
+    os.environ.get(
+        "FINAL_STRICT_CONTRACT_PATH",
+        ARTIFACT_DIR / "contract" / "strict_intensity_contract.csv.gz",
+    )
+)
+OUT_DIR = ARTIFACT_DIR / "bundle"
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -106,9 +122,9 @@ def _add_dashboard_kpis(frame: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _load_strict_predictions() -> tuple[pd.DataFrame, pd.DataFrame]:
-    test_path = STRICT_DIR / "ensemble_predictions.csv"
-    val_path = STRICT_DIR / "validation_ensemble_predictions.csv"
+def _load_strict_predictions(model_run_dir: Path = MODEL_RUN_DIR) -> tuple[pd.DataFrame, pd.DataFrame]:
+    test_path = model_run_dir / "ensemble_predictions.csv"
+    val_path = model_run_dir / "validation_ensemble_predictions.csv"
     if not test_path.exists():
         raise FileNotFoundError(f"Missing strict/intensity test predictions: {test_path}")
     if not val_path.exists():
@@ -122,10 +138,10 @@ def _load_strict_predictions() -> tuple[pd.DataFrame, pd.DataFrame]:
     return test, val
 
 
-def _load_raw_contract() -> pd.DataFrame:
-    if not RAW_CONTRACT_PATH.exists():
-        raise FileNotFoundError(f"Missing raw aligned contract: {RAW_CONTRACT_PATH}")
-    raw = pd.read_csv(RAW_CONTRACT_PATH)
+def _load_strict_contract(contract_path: Path = STRICT_CONTRACT_PATH) -> pd.DataFrame:
+    if not contract_path.exists():
+        raise FileNotFoundError(f"Missing final strict/intensity contract: {contract_path}")
+    raw = pd.read_csv(contract_path, low_memory=False)
     raw["run_id"] = raw["run_id"].astype(str)
     raw["window_ts"] = pd.to_datetime(raw["window_ts"], utc=True, errors="coerce")
     if "window_end" in raw.columns:
@@ -150,13 +166,23 @@ def _merge_predictions_with_contract(pred: pd.DataFrame, raw: pd.DataFrame) -> p
 
 def _choose_thresholds(validation: pd.DataFrame) -> dict[str, float]:
     score = pd.to_numeric(validation["warning_intensity_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
-    alert_threshold = float(np.clip(score.quantile(0.90), 0.35, 0.85))
-    watch_threshold = float(np.clip(min(alert_threshold - 0.10, score.quantile(0.75)), 0.20, alert_threshold - 0.02))
     return {
-        "watch_threshold": watch_threshold,
-        "alert_threshold": alert_threshold,
+        "watch_threshold": 0.85,
+        "alert_threshold": 0.95,
         "min_consecutive_windows": 2.0,
+        "raw_score_q85": float(score.quantile(0.85)),
+        "raw_score_q95": float(score.quantile(0.95)),
     }
+
+
+def _rank_calibrate_score(values: pd.Series, validation_values: pd.Series) -> pd.Series:
+    train = pd.to_numeric(validation_values, errors="coerce").dropna().to_numpy(dtype=float)
+    if train.size == 0:
+        return pd.to_numeric(values, errors="coerce").fillna(0.0).clip(0.0, 1.0)
+    train = np.sort(train)
+    score = pd.to_numeric(values, errors="coerce").fillna(float(np.nanmedian(train))).to_numpy(dtype=float)
+    ranks = np.searchsorted(train, score, side="right") / float(train.size)
+    return pd.Series(ranks, index=values.index, dtype=float).clip(0.0, 1.0)
 
 
 def _apply_alert_layer(frame: pd.DataFrame, thresholds: dict[str, float]) -> pd.DataFrame:
@@ -364,7 +390,7 @@ def _metrics_summary(frame: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         [
             {
-                "model": "hades-like-strict-intensity-fusion",
+                "model": "final-multimodal-strict-intensity-fusion",
                 "failure_runs": int(failure.sum()),
                 "normal_runs": int(normal.sum()),
                 "failure_run_recall": failure_run_recall,
@@ -379,8 +405,8 @@ def _metrics_summary(frame: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def _strict_metric_rows() -> list[dict[str, Any]]:
-    ensemble = pd.read_csv(STRICT_DIR / "ensemble_metrics.csv")
+def _strict_metric_rows(model_run_dir: Path = MODEL_RUN_DIR) -> list[dict[str, Any]]:
+    ensemble = pd.read_csv(model_run_dir / "ensemble_metrics.csv")
     rows: list[dict[str, Any]] = []
     for _, row in ensemble.iterrows():
         target = str(row["target"])
@@ -390,7 +416,7 @@ def _strict_metric_rows() -> list[dict[str, Any]]:
             rows.append(
                 {
                     "target": "y_warning",
-                    "baseline": "hades-like-strict-intensity-fusion",
+                    "baseline": "final-multimodal-strict-intensity-fusion",
                     "score_name": "warning_intensity_score",
                     "average_precision": _safe_float(row["average_precision"]),
                     "roc_auc": _safe_float(row.get("roc_auc")),
@@ -404,7 +430,7 @@ def _strict_metric_rows() -> list[dict[str, Any]]:
             rows.append(
                 {
                     "target": "y_risk",
-                    "baseline": "hades-like-state-score",
+                    "baseline": "final-multimodal-state-score",
                     "score_name": "state_score",
                     "average_precision": _safe_float(row["average_precision"]),
                     "roc_auc": _safe_float(row.get("roc_auc")),
@@ -414,7 +440,7 @@ def _strict_metric_rows() -> list[dict[str, Any]]:
                     "prevalence": _safe_float(row.get("prevalence")),
                 }
             )
-    baseline = pd.read_csv(STRICT_DIR / "baseline_comparison.csv")
+    baseline = pd.read_csv(model_run_dir / "baseline_comparison.csv")
     keep_cols = [
         "target",
         "baseline",
@@ -437,7 +463,7 @@ def _model_card(report: dict[str, Any], metrics: pd.DataFrame) -> str:
         [
             "# Финальная модель dashboard",
             "",
-            "**Финальная модель:** HADES-like strict intensity fusion.",
+            "**Финальная модель:** мультимодальная strict-intensity fusion.",
             "",
             "Модель использует логи, KPI и маски доступности модальностей. Основной score для дашборда — `warning_intensity_score`, "
             "диагностический strict risk-channel — `state_score`.",
@@ -465,25 +491,33 @@ def _model_card(report: dict[str, Any], metrics: pd.DataFrame) -> str:
     )
 
 
-def export_bundle() -> dict[str, Any]:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    pred, validation = _load_strict_predictions()
-    raw = _load_raw_contract()
+def export_bundle(
+    model_run_dir: str | Path = MODEL_RUN_DIR,
+    contract_path: str | Path = STRICT_CONTRACT_PATH,
+    out_dir: str | Path = OUT_DIR,
+) -> dict[str, Any]:
+    model_run_dir = Path(model_run_dir)
+    contract_path = Path(contract_path)
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    pred, validation = _load_strict_predictions(model_run_dir)
+    raw = _load_strict_contract(contract_path)
     thresholds = _choose_thresholds(validation)
 
     replay = _merge_predictions_with_contract(pred, raw)
     replay = _add_dashboard_kpis(replay)
-    replay["model_score"] = pd.to_numeric(replay["warning_intensity_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
+    replay["warning_intensity_score_raw"] = pd.to_numeric(replay["warning_intensity_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
+    replay["model_score"] = _rank_calibrate_score(replay["warning_intensity_score_raw"], validation["warning_intensity_score"])
     replay["alert_score"] = replay["model_score"]
     replay["warning_score"] = replay["model_score"]
     replay["strict_state_score"] = pd.to_numeric(replay["state_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
     replay["risk_score_raw"] = replay["strict_state_score"]
     replay["risk_score"] = replay["model_score"]
     replay["time_to_failure_sec"] = pd.to_numeric(replay.get("strict_lead_sec", np.nan), errors="coerce")
-    replay["model_mode"] = "hades_like_strict_intensity"
-    replay["model_name"] = "HADES-like strict intensity fusion"
+    replay["model_mode"] = "final_multimodal_strict_intensity"
+    replay["model_name"] = "Мультимодальная strict-intensity fusion"
     replay["score_source"] = "model_store"
-    replay["source_bundle"] = str(STRICT_DIR.relative_to(ROOT))
+    replay["source_bundle"] = str(model_run_dir.relative_to(ROOT)) if model_run_dir.is_relative_to(ROOT) else str(model_run_dir)
     replay = _add_fusion_diagnostics(replay)
     replay = _apply_alert_layer(replay, thresholds)
     replay = _add_incident_markers(replay)
@@ -491,14 +525,15 @@ def export_bundle() -> dict[str, Any]:
 
     events = _run_events(replay)
     metrics = _metrics_summary(replay, events)
-    strict_rows = _strict_metric_rows()
+    strict_rows = _strict_metric_rows(model_run_dir)
     baseline_table = pd.DataFrame(strict_rows)
 
     report = {
-        "model_name": "HADES-like strict intensity fusion",
-        "model_family": "hades_like_strict_intensity_fusion",
-        "run_id": "hades_v2_strict_intensity_gap10",
-        "source_dir": str(STRICT_DIR.relative_to(ROOT)),
+        "model_name": "Мультимодальная strict-intensity fusion",
+        "model_family": "final_multimodal_strict_intensity_fusion",
+        "run_id": model_run_dir.name,
+        "source_dir": str(model_run_dir.relative_to(ROOT)) if model_run_dir.is_relative_to(ROOT) else str(model_run_dir),
+        "contract_path": str(contract_path.relative_to(ROOT)) if contract_path.is_relative_to(ROOT) else str(contract_path),
         "contract_mode": "strict_explicit_only_gap10",
         "primary_dashboard_score": "warning_intensity_score",
         "diagnostic_risk_channel": "state_score",
@@ -507,44 +542,38 @@ def export_bundle() -> dict[str, Any]:
         "alert_layer": thresholds,
         "run_level_metrics": metrics.to_dict("records"),
         "strict_research_metrics": strict_rows,
-        "baseline_diagnostics": [
-            {
-                "target": "y_warning",
-                "central_average_precision": 0.5756328684523861,
-                "best_baseline": "kpi-only",
-                "best_baseline_average_precision": 0.4536443893640821,
-                "delta_vs_best_baseline_ap": 0.12198847908830402,
-                "verdict": "лучше baseline",
-            },
-            {
-                "target": "y_risk",
-                "central_average_precision": 0.15709522370631937,
-                "best_baseline": "availability-only",
-                "best_baseline_average_precision": 0.14182277872841598,
-                "delta_vs_best_baseline_ap": 0.01527244497790339,
-                "verdict": "паритет / небольшой выигрыш",
-            },
-        ],
+        "baseline_diagnostics": [],
     }
 
-    replay.to_csv(OUT_DIR / "replay_bundle.csv.gz", index=False, compression="gzip")
-    replay.to_csv(OUT_DIR / "dashboard_replay_store.csv.gz", index=False, compression="gzip")
-    events.to_csv(OUT_DIR / "alert_events.csv", index=False)
-    events.to_csv(OUT_DIR / "product_case_catalog.csv", index=False)
-    metrics.to_csv(OUT_DIR / "metrics_summary.csv", index=False)
-    metrics.to_csv(OUT_DIR / "alert_run_metrics.csv", index=False)
-    baseline_table.to_csv(OUT_DIR / "baseline_comparison.csv", index=False)
-    baseline_table.to_csv(OUT_DIR / "alert_model_comparison.csv", index=False)
-    pd.DataFrame(strict_rows).to_csv(OUT_DIR / "strict_research_summary.csv", index=False)
-    _write_json(OUT_DIR / "dashboard_model_report.json", report)
-    _write_json(OUT_DIR / "product_acceptance_report.json", report)
-    (OUT_DIR / "model_card_product.md").write_text(_model_card(report, metrics), encoding="utf-8")
+    replay.to_csv(out_dir / "replay_bundle.csv.gz", index=False, compression="gzip")
+    replay.to_csv(out_dir / "dashboard_replay_store.csv.gz", index=False, compression="gzip")
+    events.to_csv(out_dir / "alert_events.csv", index=False)
+    events.to_csv(out_dir / "product_case_catalog.csv", index=False)
+    metrics.to_csv(out_dir / "metrics_summary.csv", index=False)
+    metrics.to_csv(out_dir / "alert_run_metrics.csv", index=False)
+    baseline_table.to_csv(out_dir / "baseline_comparison.csv", index=False)
+    baseline_table.to_csv(out_dir / "alert_model_comparison.csv", index=False)
+    pd.DataFrame(strict_rows).to_csv(out_dir / "strict_research_summary.csv", index=False)
+    _write_json(out_dir / "dashboard_model_report.json", report)
+    _write_json(out_dir / "product_acceptance_report.json", report)
+    (out_dir / "model_card_product.md").write_text(_model_card(report, metrics), encoding="utf-8")
     return report
 
 
 def main() -> None:
-    report = export_bundle()
-    print(json.dumps({"status": "ok", "out_dir": str(OUT_DIR), "model": report["model_name"]}, ensure_ascii=False, indent=2))
+    parser = argparse.ArgumentParser(description="Export final dashboard replay bundle from model artifacts.")
+    parser.add_argument("--artifact-dir", default=str(DEFAULT_ARTIFACT_DIR.relative_to(ROOT)))
+    parser.add_argument("--model-run-dir", default=None)
+    parser.add_argument("--contract-path", default=None)
+    args = parser.parse_args()
+    artifact_dir = Path(args.artifact_dir)
+    if not artifact_dir.is_absolute():
+        artifact_dir = ROOT / artifact_dir
+    model_run_dir = Path(args.model_run_dir) if args.model_run_dir else artifact_dir / "model" / "final_multimodal_strict_intensity_gap10"
+    contract_path = Path(args.contract_path) if args.contract_path else artifact_dir / "contract" / "strict_intensity_contract.csv.gz"
+    out_dir = artifact_dir / "bundle"
+    report = export_bundle(model_run_dir=model_run_dir, contract_path=contract_path, out_dir=out_dir)
+    print(json.dumps({"status": "ok", "out_dir": str(out_dir), "model": report["model_name"]}, ensure_ascii=False, indent=2))
 
 
 if __name__ == "__main__":

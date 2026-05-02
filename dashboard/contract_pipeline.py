@@ -12,21 +12,19 @@ import pandas as pd
 
 APP_ROOT = Path(__file__).resolve().parents[1]
 RAW_DATA_ROOT = APP_ROOT / "raw_data"
-RAW_MULTIRATE_DIR = APP_ROOT / "outputs" / "raw_multirate"
-RAW_CENTRAL_MODEL_DIR = APP_ROOT / "outputs" / "raw_central_model"
-FINAL_ALERT_MODEL_DIR = APP_ROOT / "outputs" / "final_alert_system"
-DASHBOARD_MODEL_DIR_ENV = "DASHBOARD_MODEL_DIR"
+DEFAULT_ARTIFACT_DIR = APP_ROOT / "dashboard" / "artifacts"
+DASHBOARD_ARTIFACT_DIR_ENV = "DASHBOARD_ARTIFACT_DIR"
 
 
 def resolve_dashboard_model_dir(value: str | Path | None = None) -> Path:
-    raw_value = value if value is not None else os.environ.get(DASHBOARD_MODEL_DIR_ENV)
+    raw_value = value if value is not None else os.environ.get(DASHBOARD_ARTIFACT_DIR_ENV)
     if raw_value is None or str(raw_value).strip() == "":
-        if (FINAL_ALERT_MODEL_DIR / "replay_bundle.csv.gz").exists() or (FINAL_ALERT_MODEL_DIR / "dashboard_replay_store.csv.gz").exists():
-            return FINAL_ALERT_MODEL_DIR.resolve()
-        return RAW_CENTRAL_MODEL_DIR.resolve()
+        return (DEFAULT_ARTIFACT_DIR / "bundle").resolve()
     path = Path(raw_value).expanduser()
     if not path.is_absolute():
         path = APP_ROOT / path
+    if (path / "bundle").exists():
+        path = path / "bundle"
     return path.resolve()
 
 def _first_existing_path(*paths: Path) -> Path:
@@ -36,11 +34,8 @@ def _first_existing_path(*paths: Path) -> Path:
     return paths[0]
 
 
-ALIGNED_CONTRACT_PATH = _first_existing_path(
-    RAW_MULTIRATE_DIR / "aligned_multirate_windows.csv.gz",
-    RAW_MULTIRATE_DIR / "aligned_multirate_windows.csv",
-)
-BASELINE_SUMMARY_PATH = RAW_MULTIRATE_DIR / "baseline_summary_metrics.json"
+ALIGNED_CONTRACT_PATH = DEFAULT_ARTIFACT_DIR / "contract" / "strict_intensity_contract.csv.gz"
+BASELINE_SUMMARY_PATH = DEFAULT_ARTIFACT_DIR / "reports" / "baseline_summary_metrics.json"
 
 CONTRACT_ID_COLUMNS = [
     "workload",

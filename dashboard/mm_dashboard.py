@@ -503,6 +503,36 @@ def render_about(bundle, inference, view) -> None:
             st.markdown(inference.model_card)
 
 
+def render_setup_required(inference) -> None:
+    st.markdown(
+        """
+        <div class="header-grid">
+          <div class="app-head">
+            <div class="logo-shield">L</div>
+            <div>
+              <div class="app-title">LCMAN Dashboard</div>
+              <div class="app-subtitle">Финальный replay-интерфейс требует bundle из dashboard/artifacts.</div>
+            </div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.error("Финальный bundle не найден. Дашборд больше не использует proxy-режим и старые outputs.")
+    st.code(
+        "\n".join(
+            [
+                "python -m dashboard.final_data_pipeline --raw-data raw_data",
+                "python -m dashboard.train_multimodal_fusion --contract dashboard/artifacts/contract/strict_intensity_contract.csv.gz",
+                "python -m dashboard.export_dashboard_bundle",
+                "streamlit run dashboard/mm_dashboard.py",
+            ]
+        ),
+        language="powershell",
+    )
+    st.dataframe(artifact_checks_frame(inference.artifact_checks), use_container_width=True, hide_index=True)
+
+
 def main() -> None:
     st.set_page_config(
         page_title="LCMAN Dashboard",
@@ -517,7 +547,8 @@ def main() -> None:
         if inference.ready and not inference.dashboard_replay_store.empty:
             bundle = load_compact_replay_bundle(inference.dashboard_replay_store, inference.model_dir)
         else:
-            bundle = _load_contract_cached()
+            render_setup_required(inference)
+            st.stop()
     except DataContractError as exc:
         st.error(f"Ошибка data contract: {exc}")
         st.stop()
@@ -537,7 +568,7 @@ def main() -> None:
     render_header(case, current, step_idx, len(run_df), view.mode)
     case, run_df, step_idx = render_controls(view.cases, view.timeline)
     current = run_df.iloc[step_idx]
-    source_label = "replay_bundle" if bundle.contract_path.name.startswith("replay_bundle") else ("dashboard_replay_store" if bundle.contract_path.name.startswith("dashboard_replay_store") else "raw_multirate contract")
+    source_label = "replay_bundle" if bundle.contract_path.name.startswith("replay_bundle") else ("dashboard_replay_store" if bundle.contract_path.name.startswith("dashboard_replay_store") else "strict_intensity contract")
     st.markdown(
         chip_row(
             [

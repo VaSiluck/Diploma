@@ -7,7 +7,7 @@ from typing import Any
 
 import pandas as pd
 
-from dashboard.contract_pipeline import APP_ROOT, ALIGNED_CONTRACT_PATH, RAW_MULTIRATE_DIR, ArtifactCheck, resolve_dashboard_model_dir
+from dashboard.contract_pipeline import APP_ROOT, ArtifactCheck, resolve_dashboard_model_dir
 
 
 COMPACT_BUNDLE_FILES = [
@@ -21,7 +21,6 @@ DEBUG_ARTIFACT_FILES = [
     "preprocessing_artifacts.joblib",
     "central_model_metrics.json",
     "model_report.json",
-    "model_card_central_fusion.md",
     "model_card_product.md",
     "dashboard_replay_store.csv.gz",
     "central_model_predictions.csv",
@@ -137,35 +136,7 @@ def _ensure_cached_replay_store(model_dir: Path, model_report: dict[str, Any]) -
     existing = _first_existing(model_dir, ["replay_bundle.csv.gz", "replay_bundle.csv", "dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"])
     if existing is not None:
         return existing
-
-    cache_dir = APP_ROOT / ".cache" / "dashboard"
-    cached = _first_existing(cache_dir, ["replay_bundle.csv.gz", "replay_bundle.csv", "dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"])
-    if cached is not None:
-        return cached
-
-    prediction_store, _ = _read_first_csv(model_dir, ["inference_store.csv", "central_model_predictions.csv"])
-    baseline_comparison = _read_csv(model_dir / "baseline_comparison.csv")
-    baseline_predictions, _ = _read_first_csv(RAW_MULTIRATE_DIR, ["baseline_predictions.csv.gz", "model_predictions_smoke.csv"])
-    metrics_payload = model_report.get("metrics_payload", model_report) if isinstance(model_report, dict) else {}
-    if prediction_store.empty or baseline_comparison.empty or not ALIGNED_CONTRACT_PATH.exists():
-        return None
-
-    try:
-        from dashboard.model_report import write_dashboard_diagnostics
-
-        timeline = pd.read_csv(ALIGNED_CONTRACT_PATH, low_memory=False)
-        artifacts = write_dashboard_diagnostics(
-            timeline=timeline,
-            prediction_store=prediction_store,
-            baseline_predictions=baseline_predictions,
-            baseline_comparison=baseline_comparison,
-            metrics_payload=metrics_payload if isinstance(metrics_payload, dict) else {},
-            output_dir=cache_dir,
-        )
-        replay_path = Path(artifacts["dashboard_replay_store"])
-        return replay_path if replay_path.exists() else None
-    except Exception:
-        return None
+    return None
 
 
 def inspect_inference_bundle(model_dir: Path | None = None) -> InferenceBundleStatus:
@@ -241,7 +212,7 @@ def inspect_inference_bundle(model_dir: Path | None = None) -> InferenceBundleSt
         artifact_checks=checks,
         metrics=metrics if isinstance(metrics, dict) else {},
         inference_manifest=_read_json(model_dir / "inference_manifest.json"),
-        model_card=_read_text(_first_existing(model_dir, ["model_card_product.md", "model_card_central_fusion.md"]) or model_dir / "model_card_central_fusion.md"),
+        model_card=_read_text(_first_existing(model_dir, ["model_card_product.md"]) or model_dir / "model_card_product.md"),
         baseline_comparison=_read_first_csv(model_dir, ["baseline_comparison.csv", "alert_model_comparison.csv", "metrics_summary.csv"])[0],
         prediction_store=prediction_store,
         prediction_store_path=prediction_store_path,
