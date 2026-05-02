@@ -15,6 +15,9 @@ RISK_WARNING_MAX = 0.70
 
 STATE_COLORS = {
     "normal": "#16a34a",
+    "watch": "#f59e0b",
+    "alert": "#dc2626",
+    "incident": "#111827",
     "warning": "#f59e0b",
     "risk": "#dc2626",
 }
@@ -810,9 +813,14 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     cur = run_df.iloc[current_idx]
 
     x = pd.to_datetime(run_df["window_ts"], utc=True, errors="coerce")
-    risk = pd.to_numeric(run_df["risk_score"], errors="coerce").fillna(0.0).clip(0, 1)
+    score_col = "model_score" if "model_score" in run_df.columns else ("alert_score" if "alert_score" in run_df.columns else "risk_score")
+    risk = pd.to_numeric(run_df[score_col], errors="coerce").fillna(0.0).clip(0, 1)
     current_ts = pd.Timestamp(cur["window_ts"])
-    current_score = safe_float(cur.get("risk_score"))
+    current_score = safe_float(cur.get(score_col))
+    watch_threshold = safe_float(cur.get("watch_threshold", RISK_NORMAL_MAX), RISK_NORMAL_MAX)
+    alert_threshold = safe_float(cur.get("alert_threshold", cur.get("threshold_risk", RISK_WARNING_MAX)), RISK_WARNING_MAX)
+    watch_threshold = float(np.clip(watch_threshold, 0.0, 1.0))
+    alert_threshold = float(np.clip(alert_threshold, watch_threshold, 1.0))
 
     window_end = pd.to_datetime(cur.get("window_end"), utc=True, errors="coerce")
     macro_sec = int(max(safe_float(cur.get("macro_window_sec", 60), 60), safe_float(cur.get("micro_window_sec", 10), 10)))
@@ -824,9 +832,9 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     if window_end <= current_ts:
         window_end = current_ts + pd.Timedelta(seconds=int(safe_float(cur.get("micro_window_sec", 10), 10)))
 
-    fig.add_hrect(y0=0.0, y1=RISK_NORMAL_MAX, fillcolor="#ecfdf5", opacity=0.62, line_width=0, layer="below")
-    fig.add_hrect(y0=RISK_NORMAL_MAX, y1=RISK_WARNING_MAX, fillcolor="#fffbeb", opacity=0.56, line_width=0, layer="below")
-    fig.add_hrect(y0=RISK_WARNING_MAX, y1=1.05, fillcolor="#fff1f2", opacity=0.58, line_width=0, layer="below")
+    fig.add_hrect(y0=0.0, y1=watch_threshold, fillcolor="#ecfdf5", opacity=0.42, line_width=0, layer="below")
+    fig.add_hrect(y0=watch_threshold, y1=alert_threshold, fillcolor="#fffbeb", opacity=0.38, line_width=0, layer="below")
+    fig.add_hrect(y0=alert_threshold, y1=1.05, fillcolor="#fff1f2", opacity=0.34, line_width=0, layer="below")
 
     kpi_missing = pd.to_numeric(run_df.get("kpi_available", 1), errors="coerce").fillna(1).eq(0).to_numpy()
     start = None
@@ -860,11 +868,11 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
             x=x,
             y=risk,
             mode="lines",
-            name="Оценка риска" if not preview else "Proxy-риск",
+            name="Оценка модели" if not preview else "Proxy-оценка",
             line={"color": "#2f80ed", "width": 3.0, "shape": "spline", "smoothing": 0.55},
             fill="tozeroy",
             fillcolor="rgba(47,128,237,0.13)",
-            hovertemplate="%{x|%H:%M:%S}<br>риск=%{y:.2f}<extra></extra>",
+            hovertemplate="%{x|%H:%M:%S}<br>оценка=%{y:.2f}<extra></extra>",
         )
     )
     fig.add_trace(
@@ -880,8 +888,8 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     )
 
     for value, label, color, dash in [
-        (RISK_NORMAL_MAX, "Норма (<0.3)", "#10b981", "dot"),
-        (RISK_WARNING_MAX, "Риск (>0.7)", "#dc2626", "dot"),
+        (watch_threshold, "Порог наблюдения", "#f59e0b", "dot"),
+        (alert_threshold, "Порог тревоги", "#dc2626", "dash"),
     ]:
         fig.add_trace(
             go.Scatter(
@@ -930,6 +938,25 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
         font={"size": 10, "color": "#ffffff"},
     )
 
+    alert_state = run_df.get("alert_state", pd.Series("", index=run_df.index)).fillna("").astype(str).str.lower()
+    alert_mask = alert_state.eq("alert")
+    if not alert_mask.any():
+        alert_mask = pd.to_numeric(run_df.get("alert_fired", 0), errors="coerce").fillna(0).astype(int).eq(1)
+    if alert_mask.any():
+        alert_ts = pd.Timestamp(pd.to_datetime(run_df.loc[alert_mask, "window_ts"], utc=True, errors="coerce").iloc[0])
+        fig.add_vline(x=alert_ts, line_color="#f59e0b", line_width=1.8, line_dash="dash")
+        fig.add_annotation(
+            x=alert_ts,
+            y=0.88,
+            text=f"ТРЕВОГА<br>{alert_ts.strftime('%H:%M')}",
+            showarrow=False,
+            font={"size": 10, "color": "#b45309"},
+            yanchor="bottom",
+            bgcolor="#fffbeb",
+            bordercolor="#f59e0b",
+            borderpad=4,
+        )
+
     anchor_policy = str(cur.get("anchor_policy", ""))
     anchor_ts = pd.to_datetime(cur.get("event_anchor", cur.get("fail_start")), utc=True, errors="coerce")
     if anchor_policy != "normal_no_failure" and pd.notna(anchor_ts):
@@ -939,7 +966,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
         fig.add_annotation(
             x=pd.Timestamp(anchor_ts),
             y=0.98,
-            text=f"Якорь события<br>{anchor_label}<br>{pd.Timestamp(anchor_ts).strftime('%H:%M')}",
+            text=f"ИНЦИДЕНТ<br>{anchor_label}<br>{pd.Timestamp(anchor_ts).strftime('%H:%M')}",
             showarrow=False,
             font={"size": 10, "color": anchor_color},
             yanchor="bottom",
@@ -947,8 +974,8 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
 
     x_left = x.min()
     if pd.notna(x_left):
-        fig.add_annotation(xref="paper", x=0.017, y=0.86, text="Риск", showarrow=False, bgcolor="#dc2626", font={"color": "white", "size": 11}, borderpad=4)
-        fig.add_annotation(xref="paper", x=0.017, y=0.50, text="Предупреждение", showarrow=False, bgcolor="#fff7ed", font={"color": "#d97706", "size": 11}, bordercolor="#facc15", borderpad=4)
+        fig.add_annotation(xref="paper", x=0.017, y=0.86, text="Тревога", showarrow=False, bgcolor="#dc2626", font={"color": "white", "size": 11}, borderpad=4)
+        fig.add_annotation(xref="paper", x=0.017, y=0.50, text="Наблюдение", showarrow=False, bgcolor="#fff7ed", font={"color": "#d97706", "size": 11}, bordercolor="#facc15", borderpad=4)
         fig.add_annotation(xref="paper", x=0.017, y=0.17, text="Норма", showarrow=False, bgcolor="#ecfdf5", font={"color": "#15803d", "size": 11}, bordercolor="#86efac", borderpad=4)
 
     fig.update_layout(
@@ -980,7 +1007,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
         fixedrange=True,
     )
     fig.update_yaxes(
-        title_text="Оценка риска",
+        title_text="Оценка модели",
         range=[0, 1.06],
         gridcolor="#edf2f7",
         zeroline=False,
@@ -992,11 +1019,18 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     return fig
 
 
-def build_fusion_figure(log_share: float, kpi_available: bool) -> go.Figure:
-    log_share = float(np.clip(log_share, 0.0, 1.0))
-    kpi_share = 0.0 if not kpi_available else max(0.0, 1.0 - log_share)
-    if not kpi_available:
-        log_share = 1.0
+def build_fusion_figure(log_share: float, kpi_share: float | None = None, share_available: bool = True) -> go.Figure:
+    if not share_available:
+        log_share = 0.5
+        kpi_share = 0.5
+    else:
+        log_share = float(np.clip(log_share, 0.0, 1.0))
+        kpi_share = max(0.0, 1.0 - log_share) if kpi_share is None else float(np.clip(kpi_share, 0.0, 1.0))
+        total = max(log_share + kpi_share, 1e-9)
+        log_share = log_share / total
+        kpi_share = kpi_share / total
+    colors = ["#1d6ee8", "#6d28d9"] if share_available else ["#94a3b8", "#cbd5e1"]
+    annotation = "Вклад<br>модальностей" if share_available else "Доли<br>недоступны"
     fig = go.Figure(
         data=[
             go.Pie(
@@ -1005,7 +1039,7 @@ def build_fusion_figure(log_share: float, kpi_available: bool) -> go.Figure:
                 hole=0.68,
                 sort=False,
                 textinfo="none",
-                marker={"colors": ["#1d6ee8", "#6d28d9"]},
+                marker={"colors": colors},
             )
         ]
     )
@@ -1014,7 +1048,7 @@ def build_fusion_figure(log_share: float, kpi_available: bool) -> go.Figure:
         margin={"l": 0, "r": 0, "t": 0, "b": 0},
         showlegend=False,
         paper_bgcolor="#ffffff",
-        annotations=[{"text": "Вклад<br>fusion", "showarrow": False, "font": {"size": 12, "color": "#334155"}}],
+        annotations=[{"text": annotation, "showarrow": False, "font": {"size": 12, "color": "#334155"}}],
     )
     return fig
 
@@ -1163,11 +1197,56 @@ def _derive_diagnostic_from_table(table: pd.DataFrame, target: str) -> dict[str,
         rows = rows.loc[rows["status"].fillna("ok").eq("ok")].copy()
     if "slice" in rows.columns:
         rows = rows.loc[rows["slice"].fillna("all").eq("all")].copy()
+    model_col = "model" if "model" in rows.columns else ("baseline" if "baseline" in rows.columns else "")
+    if "target" not in rows.columns and model_col:
+        metric_col = "run_alert_f1" if "run_alert_f1" in rows.columns else ("f1" if "f1" in rows.columns else "")
+        if not metric_col:
+            return {}
+        fused_rows = rows.loc[rows[model_col].astype(str).eq("fused")].copy()
+        baseline_rows = rows.loc[~rows[model_col].astype(str).isin(["fused", "full_lr"])].copy()
+        if fused_rows.empty:
+            return {}
+        fused = fused_rows.iloc[0]
+        best = baseline_rows.sort_values(metric_col, ascending=False).iloc[0] if not baseline_rows.empty else None
+        fused_metric = safe_float(fused.get(metric_col), np.nan)
+        best_metric = safe_float(best.get(metric_col), np.nan) if best is not None else np.nan
+        delta = fused_metric - best_metric if np.isfinite(fused_metric) and np.isfinite(best_metric) else np.nan
+        verdict = "хуже baseline" if np.isfinite(delta) and delta < -0.02 else ("лучше baseline" if np.isfinite(delta) and delta > 0.02 else "паритет")
+        return {
+            "target": "run_level_alert",
+            "central_average_precision": safe_float(fused.get("average_precision"), np.nan),
+            "central_roc_auc": safe_float(fused.get("roc_auc"), np.nan),
+            "central_f1": fused_metric,
+            "central_recall": safe_float(fused.get("failure_run_recall", fused.get("recall")), np.nan),
+            "central_precision": safe_float(fused.get("run_alert_precision", fused.get("precision")), np.nan),
+            "central_false_alert_run_rate": safe_float(fused.get("false_alert_run_rate"), np.nan),
+            "central_alert_density": safe_float(fused.get("alert_density"), np.nan),
+            "random_reference_ap": safe_float(fused.get("prevalence"), np.nan),
+            "best_baseline": str(best.get(model_col, "baseline")) if best is not None else "baseline",
+            "best_baseline_average_precision": safe_float(best.get("average_precision"), np.nan) if best is not None else np.nan,
+            "best_baseline_roc_auc": safe_float(best.get("roc_auc"), np.nan) if best is not None else np.nan,
+            "best_baseline_f1": best_metric,
+            "best_baseline_recall": safe_float(best.get("failure_run_recall", best.get("recall")), np.nan) if best is not None else np.nan,
+            "best_baseline_precision": safe_float(best.get("run_alert_precision", best.get("precision")), np.nan) if best is not None else np.nan,
+            "best_baseline_false_alert_run_rate": safe_float(best.get("false_alert_run_rate"), np.nan) if best is not None else np.nan,
+            "best_baseline_alert_density": safe_float(best.get("alert_density"), np.nan) if best is not None else np.nan,
+            "delta_vs_best_baseline_ap": delta,
+            "verdict": verdict,
+        }
+    if "target" not in rows.columns:
+        return {}
     rows = rows.loc[rows["target"].astype(str).eq(target)].copy()
     if rows.empty:
         return {}
-    central_rows = rows.loc[rows["baseline"].astype(str).eq("central-fusion-model")].copy()
-    non_central = rows.loc[~rows["baseline"].astype(str).eq("central-fusion-model")].copy()
+    central_names = {
+        "central-fusion-model",
+        "hades-like-strict-intensity-fusion",
+        "hades-like-state-score",
+        "final-hades-like-model",
+    }
+    central_mask = rows["baseline"].astype(str).isin(central_names)
+    central_rows = rows.loc[central_mask].copy()
+    non_central = rows.loc[~central_mask].copy()
     if central_rows.empty:
         return {}
     central = central_rows.iloc[0]
@@ -1203,8 +1282,9 @@ def render_honest_baseline_card_html(
     if not diag:
         return "<div class='explain-box'>Baseline-сравнение недоступно.</div>"
 
+    is_run_level = str(diag.get("target", "")) == "run_level_alert"
     target_short = "risk" if target == "y_risk" else "warning"
-    target_label = "risk" if target == "y_risk" else "warning"
+    target_label = "alert-layer" if is_run_level else ("risk" if target == "y_risk" else "warning")
     delta = safe_float(diag.get("delta_vs_best_baseline_ap"), np.nan)
     verdict = str(diag.get("verdict", "паритет"))
     verdict_cls = "verdict-bad" if "хуже" in verdict else ("verdict-good" if "лучше" in verdict else "verdict-even")
@@ -1230,7 +1310,7 @@ def render_honest_baseline_card_html(
             "delta-even",
         ),
         (
-            "central fusion",
+            "fused alert",
             diag.get("central_average_precision"),
             diag.get("central_roc_auc"),
             diag.get("central_f1"),
@@ -1254,7 +1334,7 @@ def render_honest_baseline_card_html(
         )
 
     current_html = ""
-    if current is not None:
+    if current is not None and not is_run_level:
         central_col = "risk_score" if target == "y_risk" else "warning_score"
         baseline_col = f"baseline_{target_short}_score"
         baseline_model_col = f"baseline_{target_short}_model"
@@ -1277,12 +1357,13 @@ def render_honest_baseline_card_html(
 
     verdict_message = report.get("training_verdict", {}).get("message", "") if isinstance(report, dict) else ""
     if not verdict_message:
-        verdict_message = "Сравнение строится по test split; положительный claim допустим только при устойчивом выигрыше AP."
+        verdict_message = "Сравнение строится по test split; для alert-layer важны F1, recall, ложные тревоги и плотность тревог."
+    delta_label = "Δ F1" if is_run_level else "Δ AP"
 
     return (
         f"<span class='verdict-badge {verdict_cls}'>{html.escape(verdict)}</span>"
         "<div class='honest-card'>"
-        "<div class='honest-head'><div>Модель</div><div>AP</div><div>ROC-AUC</div><div>F1</div><div>Recall</div><div>Δ AP</div></div>"
+        f"<div class='honest-head'><div>Модель</div><div>AP</div><div>ROC-AUC</div><div>F1</div><div>Recall</div><div>{html.escape(delta_label)}</div></div>"
         f"{''.join(html_rows)}"
         f"<div class='honest-muted'>Цель: <strong>{html.escape(target_label)}</strong>. {html.escape(verdict_message)}</div>"
         "</div>"
@@ -1291,6 +1372,30 @@ def render_honest_baseline_card_html(
 
 
 def render_reliability_html(report: dict[str, Any], calibration_bins: pd.DataFrame) -> str:
+    strict_rows = report.get("strict_research_summary", []) if isinstance(report, dict) else []
+    if strict_rows:
+        rows_html = []
+        for row in strict_rows:
+            target = "risk" if str(row.get("target")) == "y_risk" else "warning"
+            delta = safe_float(row.get("delta_ap"), np.nan)
+            cls = "delta-good" if np.isfinite(delta) and delta > 0 else ("delta-bad" if np.isfinite(delta) and delta < 0 else "delta-even")
+            rows_html.append(
+                "<div class='honest-row'>"
+                f"<div class='honest-model'>{html.escape(target)}</div>"
+                f"<div class='honest-num'>{format_metric(row.get('model_average_precision'))}</div>"
+                f"<div class='honest-num'>{html.escape(str(row.get('best_baseline', 'baseline')))}</div>"
+                f"<div class='honest-num'>{format_metric(row.get('best_baseline_average_precision'))}</div>"
+                f"<div class='honest-num {cls}'>{format_delta(delta)}</div>"
+                "</div>"
+            )
+        return (
+            "<div class='honest-card'>"
+            "<div class='honest-head'><div>Цель</div><div>AP модели</div><div>Лучший baseline</div><div>AP baseline</div><div>Δ AP</div></div>"
+            f"{''.join(rows_html)}"
+            "<div class='honest-muted'>Строгая исследовательская проверка: explicit anchors, gap10. Этот блок отделен от продуктового replay alert-layer.</div>"
+            "</div>"
+        )
+
     diagnostics = report.get("baseline_diagnostics", []) if isinstance(report, dict) else []
     if not diagnostics:
         return "<div class='explain-box'>Диагностика надежности недоступна.</div>"

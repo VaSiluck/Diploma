@@ -13,18 +13,42 @@ from dashboard.inference import InferenceBundleStatus
 
 STATE_LABELS = {
     "normal": "Норма",
+    "watch": "Наблюдение",
+    "alert": "Тревога",
+    "incident": "Инцидент",
     "warning": "Предупреждение",
     "risk": "Риск",
 }
 
 CASE_LABELS = {
+    "multimodal_success": "мультимодальный кейс",
+    "log_driven_success": "логовый кейс",
+    "kpi_driven_success": "KPI-кейс",
+    "normal_no_alert": "норма без тревоги",
+    "early_alert": "тревога до сбоя",
+    "late_alert": "поздняя тревога",
+    "false_alert": "ложная тревога",
+    "missed_failure": "сбой пропущен",
     "risk_escalation": "рост риска перед сбоем",
     "early_warning": "раннее предупреждение",
     "degraded_fallback": "неполные модальности",
     "normal_reference": "нормальный эталон",
 }
 
-CASE_ORDER = ["risk_escalation", "early_warning", "degraded_fallback", "normal_reference"]
+CASE_ORDER = [
+    "multimodal_success",
+    "log_driven_success",
+    "kpi_driven_success",
+    "normal_no_alert",
+    "early_alert",
+    "late_alert",
+    "false_alert",
+    "missed_failure",
+    "risk_escalation",
+    "early_warning",
+    "degraded_fallback",
+    "normal_reference",
+]
 
 LOG_PATTERNS = [
     (r"blk_update_request|buffer i/o|i/o error", "I/O error / storage"),
@@ -134,6 +158,31 @@ def _target_proxy_scores(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _apply_model_scores(df: pd.DataFrame, inference: InferenceBundleStatus) -> pd.DataFrame:
+    if {"model_score", "alert_state"}.issubset(df.columns):
+        out = df.copy()
+        score = pd.to_numeric(out["model_score"], errors="coerce")
+        if "alert_score" in out.columns:
+            score = score.fillna(pd.to_numeric(out["alert_score"], errors="coerce"))
+        if "risk_score" in out.columns:
+            score = score.fillna(pd.to_numeric(out["risk_score"], errors="coerce"))
+        score = score.fillna(0.0).clip(0, 1)
+        out["model_score"] = score
+        out["alert_score"] = score
+        out["risk_score"] = score
+        out["warning_score"] = score
+        alert_state = out["alert_state"].fillna("normal").astype(str).str.lower()
+        out["alert_state"] = alert_state.where(alert_state.isin(["normal", "watch", "alert", "incident"]), "normal")
+        out["alert_state_label"] = out["alert_state"].map(STATE_LABELS).fillna("Норма")
+        out["pred_state"] = np.select(
+            [out["alert_state"].isin(["alert", "incident"]), out["alert_state"].eq("watch")],
+            ["risk", "warning"],
+            default="normal",
+        )
+        out["score_source"] = out.get("score_source", "model_store")
+        out["score_source"] = out["score_source"].fillna("model_store").replace("", "model_store")
+        out["confidence"] = score
+        return out
+
     out = _target_proxy_scores(df)
     store = inference.prediction_store.copy()
     required = {"run_id", "window_ts", "warning_score", "risk_score"}
@@ -237,8 +286,8 @@ def build_dashboard_view(bundle: ContractBundle, inference: InferenceBundleStatu
         timeline = _apply_model_scores(bundle.timeline, inference)
         model_rows = int(timeline["score_source"].eq("model_store").sum())
         mode_note = (
-            f"Model-scoring: используются сохранённые предсказания central fusion "
-            f"для {model_rows} contract-окон; остальные окна остаются proxy-fallback."
+            f"Режим scoring: используется финальная мультимодальная модель "
+            f"и alert-слой для {model_rows} replay-окон."
         )
     else:
         timeline = _target_proxy_scores(bundle.timeline)
@@ -263,6 +312,59 @@ def build_dashboard_view(bundle: ContractBundle, inference: InferenceBundleStatu
 
 
 def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
+    if {"demo_case_kind", "demo_case_id"}.issubset(timeline.columns):
+        demo_rows = timeline.loc[timeline["demo_case_kind"].fillna("").astype(str).ne("")].copy()
+        if not demo_rows.empty:
+            rows: list[dict[str, Any]] = []
+            for case_id, group in demo_rows.groupby("demo_case_id", sort=False):
+                group = group.sort_values("window_ts")
+                kind_values = group["demo_case_kind"].fillna("").astype(str)
+                kind = str(kind_values.loc[kind_values.ne("")].iloc[0]) if kind_values.ne("").any() else "normal_no_alert"
+                alert_rows = group.loc[group.get("alert_state", pd.Series("", index=group.index)).fillna("").astype(str).eq("alert")]
+                if alert_rows.empty:
+                    alert_rows = group.loc[pd.to_numeric(group.get("alert_fired", 0), errors="coerce").fillna(0).astype(int).eq(1)]
+                focus_pool = alert_rows if not alert_rows.empty else group
+                if kind in {"multimodal_success", "log_driven_success", "kpi_driven_success"} and "time_to_failure_sec" in focus_pool.columns:
+                    early_pool = focus_pool.loc[pd.to_numeric(focus_pool["time_to_failure_sec"], errors="coerce").ge(10)]
+                    if not early_pool.empty:
+                        focus_pool = early_pool
+                if kind == "log_driven_success" and {"fusion_log_share", "log_only_score"}.issubset(focus_pool.columns):
+                    focus = focus_pool.sort_values(["fusion_log_share", "log_only_score", "model_score" if "model_score" in focus_pool.columns else "risk_score"], ascending=[False, False, False]).iloc[0]
+                elif kind == "kpi_driven_success" and {"fusion_kpi_share", "kpi_only_score"}.issubset(focus_pool.columns):
+                    focus = focus_pool.sort_values(["fusion_kpi_share", "kpi_only_score", "model_score" if "model_score" in focus_pool.columns else "risk_score"], ascending=[False, False, False]).iloc[0]
+                elif kind == "multimodal_success" and {"fusion_log_share", "fusion_kpi_share"}.issubset(focus_pool.columns):
+                    focus_pool = focus_pool.copy()
+                    focus_pool["_balance"] = 1.0 - (pd.to_numeric(focus_pool["fusion_log_share"], errors="coerce").fillna(0.5) - 0.5).abs() * 2.0
+                    focus = focus_pool.sort_values(["_balance", "model_score" if "model_score" in focus_pool.columns else "risk_score"], ascending=[False, False]).iloc[0]
+                elif kind == "multimodal_success" and {"log_only_score", "kpi_only_score"}.issubset(focus_pool.columns):
+                    focus_pool = focus_pool.copy()
+                    focus_pool["_both_signal"] = pd.to_numeric(focus_pool["log_only_score"], errors="coerce").fillna(0.0).clip(0, 1) * pd.to_numeric(focus_pool["kpi_only_score"], errors="coerce").fillna(0.0).clip(0, 1)
+                    focus = focus_pool.sort_values(["_both_signal", "model_score" if "model_score" in focus_pool.columns else "risk_score"], ascending=[False, False]).iloc[0]
+                elif kind == "normal_no_alert" and "model_score" in focus_pool.columns:
+                    focus = focus_pool.sort_values("model_score", ascending=True).iloc[0]
+                else:
+                    focus = focus_pool.iloc[len(focus_pool) // 2]
+                score = _safe_float(focus.get("model_score", focus.get("alert_score", focus.get("risk_score"))))
+                lead = _safe_float(focus.get("time_to_failure_sec", focus.get("run_event_lead_time_sec", focus.get("lead_time_sec"))), np.nan)
+                lead_text = "n/a" if not np.isfinite(lead) else f"{lead:.0f} сек"
+                rows.append(
+                    {
+                        "case_id": str(case_id),
+                        "kind": kind,
+                        "label": CASE_LABELS.get(kind, kind),
+                        "run_id": str(focus["run_id"]),
+                        "focus_window_ts": pd.Timestamp(focus["window_ts"]),
+                        "risk_score": score,
+                        "note": f"{CASE_LABELS.get(kind, kind)}: оценка модели={score:.2f}; lead={lead_text}.",
+                    }
+                )
+            out = pd.DataFrame(rows)
+            order = {kind: idx for idx, kind in enumerate(CASE_ORDER)}
+            out["order"] = out["kind"].map(order).fillna(99).astype(int)
+            out = out.sort_values(["order", "risk_score"], ascending=[True, False]).drop(columns=["order"]).reset_index(drop=True)
+            out["run_number"] = out["run_id"].map({rid: idx + 1 for idx, rid in enumerate(sorted(timeline["run_id"].unique()))})
+            return out
+
     rows: list[dict[str, Any]] = []
     used: set[tuple[str, pd.Timestamp]] = set()
     used_runs: set[str] = set()

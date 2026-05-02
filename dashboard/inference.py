@@ -7,23 +7,27 @@ from typing import Any
 
 import pandas as pd
 
-from dashboard.contract_pipeline import APP_ROOT, ALIGNED_CONTRACT_PATH, RAW_CENTRAL_MODEL_DIR, RAW_MULTIRATE_DIR, ArtifactCheck
+from dashboard.contract_pipeline import APP_ROOT, ALIGNED_CONTRACT_PATH, RAW_MULTIRATE_DIR, ArtifactCheck, resolve_dashboard_model_dir
 
 
 COMPACT_BUNDLE_FILES = [
+    "dashboard_model_report.json",
+    "baseline_comparison.csv",
+    "replay_bundle.csv.gz",
+]
+
+DEBUG_ARTIFACT_FILES = [
     "central_model.pt",
     "preprocessing_artifacts.joblib",
     "central_model_metrics.json",
     "model_report.json",
-    "dashboard_model_report.json",
-    "baseline_comparison.csv",
     "model_card_central_fusion.md",
+    "model_card_product.md",
     "dashboard_replay_store.csv.gz",
     "central_model_predictions.csv",
     "inference_store.csv",
-]
-
-DEBUG_ARTIFACT_FILES = [
+    "alert_events.csv",
+    "metrics_summary.csv",
     "feature_manifest.json",
     "preprocessing_manifest.json",
     "model_config.json",
@@ -40,6 +44,8 @@ DEBUG_ARTIFACT_FILES = [
 ]
 
 PREDICTION_STORE_FILES = [
+    "replay_bundle.csv.gz",
+    "replay_bundle.csv",
     "dashboard_replay_store.csv.gz",
     "dashboard_replay_store.csv",
     "inference_store.csv",
@@ -48,7 +54,8 @@ PREDICTION_STORE_FILES = [
 
 ARTIFACT_ALTERNATIVES = {
     "model_report.json": ["model_report.json", "central_model_metrics.json", "dashboard_model_report.json"],
-    "dashboard_replay_store.csv.gz": ["dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"],
+    "replay_bundle.csv.gz": ["replay_bundle.csv.gz", "replay_bundle.csv", "dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"],
+    "baseline_comparison.csv": ["baseline_comparison.csv", "alert_model_comparison.csv", "metrics_summary.csv"],
 }
 
 
@@ -95,7 +102,7 @@ def _read_csv(path: Path) -> pd.DataFrame:
     if not path.exists():
         return pd.DataFrame()
     try:
-        return pd.read_csv(path)
+        return pd.read_csv(path, low_memory=False)
     except Exception:
         return pd.DataFrame()
 
@@ -127,12 +134,12 @@ def _read_prediction_store(model_dir: Path) -> tuple[pd.DataFrame, Path | None]:
 
 
 def _ensure_cached_replay_store(model_dir: Path, model_report: dict[str, Any]) -> Path | None:
-    existing = _first_existing(model_dir, ["dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"])
+    existing = _first_existing(model_dir, ["replay_bundle.csv.gz", "replay_bundle.csv", "dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"])
     if existing is not None:
         return existing
 
     cache_dir = APP_ROOT / ".cache" / "dashboard"
-    cached = _first_existing(cache_dir, ["dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"])
+    cached = _first_existing(cache_dir, ["replay_bundle.csv.gz", "replay_bundle.csv", "dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"])
     if cached is not None:
         return cached
 
@@ -161,14 +168,15 @@ def _ensure_cached_replay_store(model_dir: Path, model_report: dict[str, Any]) -
         return None
 
 
-def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> InferenceBundleStatus:
-    model_report = _read_first_json(model_dir, ["model_report.json", "dashboard_model_report.json", "central_model_metrics.json"])
+def inspect_inference_bundle(model_dir: Path | None = None) -> InferenceBundleStatus:
+    model_dir = resolve_dashboard_model_dir(model_dir)
+    model_report = _read_first_json(model_dir, ["dashboard_model_report.json", "model_report.json", "central_model_metrics.json"])
     cached_replay_store_path = _ensure_cached_replay_store(model_dir, model_report)
     checks: list[ArtifactCheck] = []
     for name in COMPACT_BUNDLE_FILES:
         alternatives = ARTIFACT_ALTERNATIVES.get(name, [name])
         found_path = _first_existing(model_dir, alternatives)
-        if found_path is None and name == "dashboard_replay_store.csv.gz":
+        if found_path is None and name in {"dashboard_replay_store.csv.gz", "replay_bundle.csv.gz"}:
             found_path = cached_replay_store_path
         path = found_path or (model_dir / name)
         checks.append(
@@ -208,7 +216,7 @@ def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> Inferen
         "dry_run_report": _read_json(model_dir / "dry_run_report.json"),
     }
     dashboard_report = model_report
-    dashboard_replay_store, _ = _read_first_csv(model_dir, ["dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"])
+    dashboard_replay_store, _ = _read_first_csv(model_dir, ["replay_bundle.csv.gz", "replay_bundle.csv", "dashboard_replay_store.csv.gz", "dashboard_replay_store.csv"])
     if dashboard_replay_store.empty and cached_replay_store_path is not None:
         dashboard_replay_store = _read_csv(cached_replay_store_path)
     seed_metrics = pd.DataFrame(model_report.get("seed_metrics", [])) if isinstance(model_report, dict) else pd.DataFrame()
@@ -218,7 +226,7 @@ def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> Inferen
     if calibration_bins.empty:
         calibration_bins = _read_csv(model_dir / "calibration_bins.csv")
     prediction_store, prediction_store_path = _read_prediction_store(model_dir)
-    if cached_replay_store_path is not None and (prediction_store_path is None or prediction_store_path.name != "dashboard_replay_store.csv.gz"):
+    if cached_replay_store_path is not None and (prediction_store_path is None or prediction_store_path.name not in {"replay_bundle.csv.gz", "dashboard_replay_store.csv.gz"}):
         cached_store = _read_csv(cached_replay_store_path)
         if not cached_store.empty:
             prediction_store = cached_store
@@ -233,8 +241,8 @@ def inspect_inference_bundle(model_dir: Path = RAW_CENTRAL_MODEL_DIR) -> Inferen
         artifact_checks=checks,
         metrics=metrics if isinstance(metrics, dict) else {},
         inference_manifest=_read_json(model_dir / "inference_manifest.json"),
-        model_card=_read_text(model_dir / "model_card_central_fusion.md"),
-        baseline_comparison=_read_csv(model_dir / "baseline_comparison.csv"),
+        model_card=_read_text(_first_existing(model_dir, ["model_card_product.md", "model_card_central_fusion.md"]) or model_dir / "model_card_central_fusion.md"),
+        baseline_comparison=_read_first_csv(model_dir, ["baseline_comparison.csv", "alert_model_comparison.csv", "metrics_summary.csv"])[0],
         prediction_store=prediction_store,
         prediction_store_path=prediction_store_path,
         dashboard_report=dashboard_report,

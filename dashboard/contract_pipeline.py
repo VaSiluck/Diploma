@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,20 @@ APP_ROOT = Path(__file__).resolve().parents[1]
 RAW_DATA_ROOT = APP_ROOT / "raw_data"
 RAW_MULTIRATE_DIR = APP_ROOT / "outputs" / "raw_multirate"
 RAW_CENTRAL_MODEL_DIR = APP_ROOT / "outputs" / "raw_central_model"
+FINAL_ALERT_MODEL_DIR = APP_ROOT / "outputs" / "final_alert_system"
+DASHBOARD_MODEL_DIR_ENV = "DASHBOARD_MODEL_DIR"
+
+
+def resolve_dashboard_model_dir(value: str | Path | None = None) -> Path:
+    raw_value = value if value is not None else os.environ.get(DASHBOARD_MODEL_DIR_ENV)
+    if raw_value is None or str(raw_value).strip() == "":
+        if (FINAL_ALERT_MODEL_DIR / "replay_bundle.csv.gz").exists() or (FINAL_ALERT_MODEL_DIR / "dashboard_replay_store.csv.gz").exists():
+            return FINAL_ALERT_MODEL_DIR.resolve()
+        return RAW_CENTRAL_MODEL_DIR.resolve()
+    path = Path(raw_value).expanduser()
+    if not path.is_absolute():
+        path = APP_ROOT / path
+    return path.resolve()
 
 def _first_existing_path(*paths: Path) -> Path:
     for path in paths:
@@ -421,10 +436,11 @@ def load_contract_bundle(
 
 def load_compact_replay_bundle(
     replay_store: pd.DataFrame,
-    model_dir: Path = RAW_CENTRAL_MODEL_DIR,
+    model_dir: Path | None = None,
 ) -> ContractBundle:
+    model_dir = resolve_dashboard_model_dir(model_dir)
     if replay_store.empty:
-        raise DataContractError("dashboard_replay_store is empty.")
+        raise DataContractError("compact replay bundle is empty.")
 
     timeline = replay_store.copy()
     if "state" not in timeline.columns:
@@ -440,8 +456,8 @@ def load_compact_replay_bundle(
     kpi_columns = [col for col in timeline.columns if col.startswith("kpi_dashboard_")]
     checks = [
         ArtifactCheck(
-            name="dashboard_replay_store",
-            path=_first_existing_path(model_dir / "dashboard_replay_store.csv.gz", model_dir / "dashboard_replay_store.csv"),
+            name="replay_bundle",
+            path=_first_existing_path(model_dir / "replay_bundle.csv.gz", model_dir / "replay_bundle.csv", model_dir / "dashboard_replay_store.csv.gz", model_dir / "dashboard_replay_store.csv"),
             required=True,
             found=True,
             note="Compact test/model-store окна из notebook 03.",
@@ -462,7 +478,7 @@ def load_compact_replay_bundle(
         ),
     ]
     baseline_summary = {
-        "source": "dashboard_replay_store",
+        "source": "replay_bundle",
         "windows": {"micro_window_sec": 10, "macro_window_sec": 60},
     }
     return ContractBundle(
@@ -470,7 +486,7 @@ def load_compact_replay_bundle(
         baseline_summary=baseline_summary,
         artifact_checks=checks,
         kpi_columns=kpi_columns,
-        contract_path=_first_existing_path(model_dir / "dashboard_replay_store.csv.gz", model_dir / "dashboard_replay_store.csv"),
+        contract_path=_first_existing_path(model_dir / "replay_bundle.csv.gz", model_dir / "replay_bundle.csv", model_dir / "dashboard_replay_store.csv.gz", model_dir / "dashboard_replay_store.csv"),
         summary_path=_first_existing_path(model_dir / "model_report.json", model_dir / "dashboard_model_report.json"),
     )
 

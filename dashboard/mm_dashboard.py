@@ -112,22 +112,26 @@ def _move_replay(delta: int, total_steps: int) -> None:
 
 
 def render_header(case: pd.Series, current: pd.Series, step_idx: int, total_steps: int, mode: str) -> None:
-    state = str(current.get("pred_state", "normal"))
-    risk = safe_float(current.get("risk_score", 0.0), 0.0)
-    tone = "danger" if risk >= 0.70 else ("warning" if risk >= 0.30 else "success")
+    state = str(current.get("alert_state", current.get("pred_state", "normal"))).lower()
+    risk = safe_float(current.get("model_score", current.get("alert_score", current.get("risk_score", 0.0))), 0.0)
+    tone = "danger" if state in {"alert", "incident"} else ("warning" if state == "watch" else "success")
     mode_value = "Scoring" if mode == "model_scoring" else "Preview"
-    mode_sub = "central fusion" if mode == "model_scoring" else "без model bundle"
-    state_tone = "danger" if state == "risk" else ("warning" if state == "warning" else "success")
+    mode_sub = "финальная модель" if mode == "model_scoring" else "без model bundle"
+    state_tone = tone
     risk_color = "#dc2626" if tone == "danger" else ("#d97706" if tone == "warning" else "#15803d")
+    state_sub = f"шаг {step_idx + 1} / {total_steps}"
+    lead_value = safe_float(current.get("time_to_failure_sec", current.get("run_event_lead_time_sec")), np.nan)
+    if state in {"alert", "incident"} and np.isfinite(lead_value):
+        state_sub = f"до инцидента: {lead_value:.0f} сек"
     status_cards = "".join(
         [
             top_card("Режим", mode_value, mode_sub, tone="blue"),
             top_card("Сценарий", _short_run(str(case["run_id"]), limit=19), f"Run #{int(case.get('run_number', 0)):03d}"),
             top_card("Окно", _format_time_window(current), "выбранное evidence-окно"),
-            top_card("Состояние", STATE_LABELS.get(state, state), f"шаг {step_idx + 1} / {total_steps}", tone=state_tone),
+            top_card("Состояние alert-слоя", STATE_LABELS.get(state, state), state_sub, tone=state_tone),
             (
                 "<div class='top-card'>"
-                "<div class='top-label'>Оценка риска</div>"
+                "<div class='top-label'>Оценка модели</div>"
                 f"<div class='top-risk' style='color:{risk_color}'>{format_score(risk)}</div>"
                 "<div class='top-sub'>текущий шаг</div>"
                 "</div>"
@@ -231,7 +235,7 @@ def render_controls(cases: pd.DataFrame, timeline: pd.DataFrame) -> tuple[pd.Ser
 
 def render_risk_panel(run_df: pd.DataFrame, step_idx: int, preview: bool) -> None:
     with st.container(border=True):
-        st.markdown("<div class='section-title'>Оценка риска во времени</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>Оценка модели во времени</div>", unsafe_allow_html=True)
         fig = build_risk_figure(run_df, step_idx, preview=preview)
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         cur = run_df.iloc[step_idx]
@@ -345,23 +349,38 @@ def render_kpi_panel(run_df: pd.DataFrame, step_idx: int, kpi_columns: list[str]
 
 
 def render_side_panel(current: pd.Series, view, inference) -> None:
-    risk = safe_float(current.get("risk_score", 0.0), 0.0)
+    risk = safe_float(current.get("model_score", current.get("alert_score", current.get("risk_score", 0.0))), 0.0)
     warning = safe_float(current.get("warning_score", risk), risk)
-    state = str(current.get("pred_state", state_from_score(risk)))
+    state = str(current.get("alert_state", current.get("pred_state", state_from_score(risk)))).lower()
+    model_label = str(view.dashboard_report.get("model_name", "финальная мультимодальная модель") or "финальная мультимодальная модель")
     kpi_available = bool(int(safe_float(current.get("kpi_available", 0), 0)))
-    log_share = safe_float(current.get("fusion_gate", 0.5), 0.5)
-    kpi_share = 0.0 if not kpi_available else max(0.0, 1.0 - log_share)
+    log_available = bool(int(safe_float(current.get("log_available", 0), 0)))
+    log_share = safe_float(current.get("fusion_log_share", np.nan), np.nan)
+    kpi_share = safe_float(current.get("fusion_kpi_share", np.nan), np.nan)
+    share_available = bool(int(safe_float(current.get("fusion_share_available", 0), 0)))
+    share_available = share_available and np.isfinite(log_share) and np.isfinite(kpi_share) and (log_share + kpi_share) > 0
+    if share_available:
+        total_share = max(log_share + kpi_share, 1e-9)
+        log_share = float(np.clip(log_share / total_share, 0.0, 1.0))
+        kpi_share = float(np.clip(kpi_share / total_share, 0.0, 1.0))
+    else:
+        log_share, kpi_share = 0.5, 0.5
+    log_only_score = safe_float(current.get("log_only_score", np.nan), np.nan)
+    kpi_only_score = safe_float(current.get("kpi_only_score", np.nan), np.nan)
     anchor_label, anchor_color = anchor_badge_parts(current.get("anchor_policy"))
 
     with st.container(border=True):
-        st.markdown("<div class='section-title'>Сводка по риску</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>Сводка alert-слоя</div>", unsafe_allow_html=True)
         rows = [
-            ("Текущая оценка риска", format_score(risk)),
-            ("Warning score", format_score(warning)),
-            ("Состояние", STATE_LABELS.get(state, state)),
+            ("Оценка модели", format_score(risk)),
+            ("Порог наблюдения", format_score(safe_float(current.get("watch_threshold", np.nan), np.nan))),
+            ("Порог тревоги", format_score(safe_float(current.get("alert_threshold", current.get("threshold_risk", np.nan)), np.nan))),
+            ("Состояние alert-слоя", STATE_LABELS.get(state, state)),
             ("Уверенность", "n/a" if view.mode != "model_scoring" else format_score(safe_float(current.get("confidence", 0.0)))),
             ("Разметка", anchor_label),
-            ("Режим", "Preview" if view.mode != "model_scoring" else "Central fusion"),
+            ("Модель", "Preview" if view.mode != "model_scoring" else f"Финальная модель: {model_label}"),
+            ("Событие run", str(current.get("run_event_label", "n/a") or "n/a")),
+            ("Lead time", "n/a" if not np.isfinite(safe_float(current.get("time_to_failure_sec", current.get("run_event_lead_time_sec")), np.nan)) else f"{safe_float(current.get('time_to_failure_sec', current.get('run_event_lead_time_sec')), np.nan):.0f} сек"),
         ]
         html_rows = "".join(
             f"<div class='side-row'><div class='side-k'>{html.escape(k)}</div><div class='side-v'>{html.escape(v)}</div></div>"
@@ -379,25 +398,35 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
         st.markdown("<div class='section-title'>Сводка по объединению</div>", unsafe_allow_html=True)
         left, right = st.columns([0.86, 1.14], gap="small")
         with left:
-            st.plotly_chart(build_fusion_figure(log_share, kpi_available), use_container_width=True, config={"displayModeBar": False})
+            st.plotly_chart(
+                build_fusion_figure(log_share, kpi_share, share_available),
+                use_container_width=True,
+                config={"displayModeBar": False},
+            )
         with right:
+            log_share_text = f"{log_share * 100:.0f}%" if share_available else "н/д"
+            kpi_share_text = f"{kpi_share * 100:.0f}%" if share_available else "н/д"
+            log_score_text = format_score(log_only_score) if np.isfinite(log_only_score) else "н/д"
+            kpi_score_text = format_score(kpi_only_score) if np.isfinite(kpi_only_score) else "н/д"
             st.markdown(
                 (
-                    f"<div class='side-row'><div class='side-k'>Логи</div><div class='side-v'>{log_share * 100:.0f}%</div></div>"
-                    f"<div class='side-row'><div class='side-k'>KPI</div><div class='side-v'>{kpi_share * 100:.0f}%</div></div>"
-                    f"<div class='side-row'><div class='side-k'>Fallback</div><div class='side-v'>{'да' if not kpi_available else 'нет'}</div></div>"
+                    f"<div class='side-row'><div class='side-k'>Доля логов</div><div class='side-v'>{log_share_text}</div></div>"
+                    f"<div class='side-row'><div class='side-k'>Доля KPI</div><div class='side-v'>{kpi_share_text}</div></div>"
+                    f"<div class='side-row'><div class='side-k'>log-only score</div><div class='side-v'>{log_score_text}</div></div>"
+                    f"<div class='side-row'><div class='side-k'>KPI-only score</div><div class='side-v'>{kpi_score_text}</div></div>"
+                    f"<div class='side-row'><div class='side-k'>Режим</div><div class='side-v'>{html.escape(str(current.get('fusion_display_mode', 'log+kpi' if log_available and kpi_available else 'fallback')))}</div></div>"
                 ),
                 unsafe_allow_html=True,
             )
-        st.caption("В preview это диагностическая оценка вклада по доступности модальностей; после train-run здесь будет `fusion_gate` модели.")
+        st.caption("Доли считаются из отдельных log-only и KPI-only оценок в этом окне. Это диагностическое сравнение сигналов, а не доказательство причинного вклада или качества baseline.")
 
     with st.container(border=True):
         st.markdown("<div class='section-title'>Пояснение</div>", unsafe_allow_html=True)
         if view.mode == "model_scoring":
             model_rows = int(view.timeline["score_source"].eq("model_store").sum()) if "score_source" in view.timeline.columns else 0
             text = (
-                f"Dashboard использует сохранённые предсказания central fusion из train-run для {model_rows} окон. "
-                "Если выбранное окно отсутствует в inference store, оно помечается как proxy_fallback."
+                f"Dashboard использует финальный replay bundle для {model_rows} окон. "
+                "Оценка модели отделена от решения alert-слоя и фактического инцидента."
             )
         else:
             text = (
@@ -508,7 +537,7 @@ def main() -> None:
     render_header(case, current, step_idx, len(run_df), view.mode)
     case, run_df, step_idx = render_controls(view.cases, view.timeline)
     current = run_df.iloc[step_idx]
-    source_label = "dashboard_replay_store" if bundle.contract_path.name.startswith("dashboard_replay_store") else "raw_multirate contract"
+    source_label = "replay_bundle" if bundle.contract_path.name.startswith("replay_bundle") else ("dashboard_replay_store" if bundle.contract_path.name.startswith("dashboard_replay_store") else "raw_multirate contract")
     st.markdown(
         chip_row(
             [
