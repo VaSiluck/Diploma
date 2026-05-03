@@ -24,6 +24,7 @@ STATE_COLORS = {
 
 ANCHOR_LABELS = {
     "explicit_raw_log_keyword_or_severity": ("явный лог-якорь", "#2563eb"),
+    "explicit_log_signal": ("явный лог-якорь", "#2563eb"),
     "run_end_proxy": ("proxy по концу run", "#7c3aed"),
     "run_end_proxy_no_log_events": ("proxy по концу run", "#7c3aed"),
     "normal_no_failure": ("нормальный запуск", "#15803d"),
@@ -813,8 +814,9 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     cur = run_df.iloc[current_idx]
 
     x = pd.to_datetime(run_df["window_ts"], utc=True, errors="coerce")
-    score_col = "model_score" if "model_score" in run_df.columns else ("alert_score" if "alert_score" in run_df.columns else "risk_score")
+    score_col = "alert_score" if "alert_score" in run_df.columns else ("model_score_raw" if "model_score_raw" in run_df.columns else ("model_score" if "model_score" in run_df.columns else "risk_score"))
     risk = pd.to_numeric(run_df[score_col], errors="coerce").fillna(0.0).clip(0, 1)
+    rank = pd.to_numeric(run_df.get("model_score_rank", pd.Series(np.nan, index=run_df.index)), errors="coerce")
     current_ts = pd.Timestamp(cur["window_ts"])
     current_score = safe_float(cur.get(score_col))
     watch_threshold = safe_float(cur.get("watch_threshold", RISK_NORMAL_MAX), RISK_NORMAL_MAX)
@@ -872,7 +874,8 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
             line={"color": "#2f80ed", "width": 3.0, "shape": "spline", "smoothing": 0.55},
             fill="tozeroy",
             fillcolor="rgba(47,128,237,0.13)",
-            hovertemplate="%{x|%H:%M:%S}<br>оценка=%{y:.2f}<extra></extra>",
+            customdata=np.stack([rank.fillna(np.nan).to_numpy()], axis=-1),
+            hovertemplate="%{x|%H:%M:%S}<br>raw score=%{y:.3f}<br>ранг validation=%{customdata[0]:.3f}<extra></extra>",
         )
     )
     fig.add_trace(
@@ -961,7 +964,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     anchor_ts = pd.to_datetime(cur.get("event_anchor", cur.get("fail_start")), utc=True, errors="coerce")
     if anchor_policy != "normal_no_failure" and pd.notna(anchor_ts):
         anchor_label, anchor_color = anchor_badge_parts(anchor_policy)
-        line_dash = "solid" if anchor_policy == "explicit_raw_log_keyword_or_severity" else "dash"
+        line_dash = "solid" if anchor_policy in {"explicit_raw_log_keyword_or_severity", "explicit_log_signal"} else "dash"
         fig.add_vline(x=pd.Timestamp(anchor_ts), line_color=anchor_color, line_width=1.2, line_dash=line_dash)
         fig.add_annotation(
             x=pd.Timestamp(anchor_ts),
@@ -974,9 +977,12 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
 
     x_left = x.min()
     if pd.notna(x_left):
-        fig.add_annotation(xref="paper", x=0.017, y=0.86, text="Тревога", showarrow=False, bgcolor="#dc2626", font={"color": "white", "size": 11}, borderpad=4)
-        fig.add_annotation(xref="paper", x=0.017, y=0.50, text="Наблюдение", showarrow=False, bgcolor="#fff7ed", font={"color": "#d97706", "size": 11}, bordercolor="#facc15", borderpad=4)
-        fig.add_annotation(xref="paper", x=0.017, y=0.17, text="Норма", showarrow=False, bgcolor="#ecfdf5", font={"color": "#15803d", "size": 11}, bordercolor="#86efac", borderpad=4)
+        normal_y = max(watch_threshold * 0.5, 0.04)
+        watch_y = watch_threshold + max((alert_threshold - watch_threshold) * 0.5, 0.03)
+        alert_y = alert_threshold + max((1.0 - alert_threshold) * 0.5, 0.03)
+        fig.add_annotation(xref="paper", x=0.017, y=min(alert_y, 1.02), text="Тревога", showarrow=False, bgcolor="#dc2626", font={"color": "white", "size": 11}, borderpad=4)
+        fig.add_annotation(xref="paper", x=0.017, y=min(watch_y, 1.0), text="Наблюдение", showarrow=False, bgcolor="#fff7ed", font={"color": "#d97706", "size": 11}, bordercolor="#facc15", borderpad=4)
+        fig.add_annotation(xref="paper", x=0.017, y=normal_y, text="Норма", showarrow=False, bgcolor="#ecfdf5", font={"color": "#15803d", "size": 11}, bordercolor="#86efac", borderpad=4)
 
     fig.update_layout(
         height=470,
@@ -1007,7 +1013,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
         fixedrange=True,
     )
     fig.update_yaxes(
-        title_text="Оценка модели",
+        title_text="Оценка модели, 0-1 (не вероятность сбоя)",
         range=[0, 1.06],
         gridcolor="#edf2f7",
         zeroline=False,
@@ -1030,7 +1036,7 @@ def build_fusion_figure(log_share: float, kpi_share: float | None = None, share_
         log_share = log_share / total
         kpi_share = kpi_share / total
     colors = ["#1d6ee8", "#6d28d9"] if share_available else ["#94a3b8", "#cbd5e1"]
-    annotation = "Вклад<br>модальностей" if share_available else "Доли<br>недоступны"
+    annotation = "Баланс<br>сигналов" if share_available else "Баланс<br>н/д"
     fig = go.Figure(
         data=[
             go.Pie(
@@ -1359,13 +1365,13 @@ def render_honest_baseline_card_html(
 
     verdict_message = report.get("training_verdict", {}).get("message", "") if isinstance(report, dict) else ""
     if not verdict_message:
-        verdict_message = "Сравнение строится по test split; для alert-layer важны F1, recall, ложные тревоги и плотность тревог."
+        verdict_message = "Сравнение строится по test split; F1@10% и Recall@10% считаются для верхних 10% окон по score, чтобы сравнивать ранжирование без притворной калибровки."
     delta_label = "Δ F1" if is_run_level else "Δ AP"
 
     return (
         f"<span class='verdict-badge {verdict_cls}'>{html.escape(verdict)}</span>"
         "<div class='honest-card'>"
-        f"<div class='honest-head'><div>Модель</div><div>AP</div><div>ROC-AUC</div><div>F1</div><div>Recall</div><div>{html.escape(delta_label)}</div></div>"
+        f"<div class='honest-head'><div>Модель</div><div>AP</div><div>ROC-AUC</div><div>F1@10%</div><div>Recall@10%</div><div>{html.escape(delta_label)}</div></div>"
         f"{''.join(html_rows)}"
         f"<div class='honest-muted'>Цель: <strong>{html.escape(target_label)}</strong>. {html.escape(verdict_message)}</div>"
         "</div>"

@@ -51,12 +51,41 @@ def _safe_float(value: Any, default: float = np.nan) -> float:
     return out if np.isfinite(out) else default
 
 
-def _score_columns(frame: pd.DataFrame, family: str | None = None, tokens: tuple[str, ...] = ()) -> list[str]:
+def _kpi_info(column: str) -> dict[str, str]:
+    parts = column.removeprefix("kpi_").split("__")
+    return {
+        "host": parts[0] if len(parts) > 0 else "",
+        "family": parts[1] if len(parts) > 1 else "",
+        "metric": parts[2] if len(parts) > 2 else "",
+        "dim": parts[3] if len(parts) > 3 else "",
+        "stat": parts[-1] if parts else "",
+    }
+
+
+def _metric_matches(metric: str, token: str) -> bool:
+    metric = str(metric).lower()
+    token = str(token).lower()
+    return metric == token or metric.replace("_ss", "_s") == token or token.replace("_s", "_ss") == metric
+
+
+def _score_columns(
+    frame: pd.DataFrame,
+    family: str | None = None,
+    tokens: tuple[str, ...] = (),
+    stats: tuple[str, ...] | None = None,
+) -> list[str]:
     cols = [col for col in frame.columns if col.startswith("kpi_") and "__" in col]
     if family:
         cols = [col for col in cols if f"__{family}__" in col]
     if tokens:
-        cols = [col for col in cols if any(token in col.lower() for token in tokens)]
+        cols = [
+            col
+            for col in cols
+            if any(_metric_matches(_kpi_info(col)["metric"], token) for token in tokens)
+        ]
+    if stats:
+        stat_set = {str(stat).lower() for stat in stats}
+        cols = [col for col in cols if _kpi_info(col)["stat"].lower() in stat_set]
     return cols
 
 
@@ -71,6 +100,38 @@ def _row_aggregate(frame: pd.DataFrame, cols: list[str], mode: str = "median") -
     if mode == "sum":
         return values.sum(axis=1, min_count=1)
     return values.median(axis=1)
+
+
+def _source_summary(cols: list[str], limit: int = 10) -> str:
+    if not cols:
+        return ""
+    shown = cols[:limit]
+    suffix = f";...(+{len(cols) - limit})" if len(cols) > limit else ""
+    return ";".join(shown) + suffix
+
+
+def _sum_metrics_by_host(
+    frame: pd.DataFrame,
+    family: str,
+    metrics: tuple[str, ...],
+    stats: tuple[str, ...] = ("last", "mean"),
+) -> tuple[pd.Series, list[str]]:
+    cols = _score_columns(frame, family, metrics, stats=stats)
+    if not cols:
+        return pd.Series(np.nan, index=frame.index, dtype=float), []
+
+    grouped: dict[tuple[str, str, str], list[str]] = {}
+    for col in cols:
+        info = _kpi_info(col)
+        grouped.setdefault((info["host"], info["dim"], info["stat"]), []).append(col)
+
+    pieces = []
+    for group_cols in grouped.values():
+        pieces.append(frame[group_cols].apply(pd.to_numeric, errors="coerce").sum(axis=1, min_count=1))
+    if not pieces:
+        return pd.Series(np.nan, index=frame.index, dtype=float), cols
+    values = pd.concat(pieces, axis=1)
+    return values.median(axis=1, skipna=True), cols
 
 
 def _normalise_pct(series: pd.Series) -> pd.Series:
@@ -93,24 +154,35 @@ def _normalise_pct(series: pd.Series) -> pd.Series:
 def _add_dashboard_kpis(frame: pd.DataFrame) -> pd.DataFrame:
     out = frame.copy()
     if "kpi_dashboard_cpu_pct" not in out.columns:
-        idle_cols = _score_columns(out, "cpustat", ("idle",))
-        busy_cols = _score_columns(out, "cpustat", ("user", "system", "iowait", "wa"))
-        idle = _row_aggregate(out, idle_cols, "min")
-        busy = _row_aggregate(out, busy_cols, "sum")
+        idle_cols = _score_columns(out, "cpustat", ("idle",), stats=("last", "mean"))
+        idle = _row_aggregate(out, idle_cols, "median")
+        busy, busy_cols = _sum_metrics_by_host(out, "cpustat", ("user", "system", "iowait", "wa"), stats=("last", "mean"))
         cpu_pct = np.where(idle.notna(), 100.0 - _normalise_pct(idle), _normalise_pct(busy))
         out["kpi_dashboard_cpu_pct"] = pd.Series(cpu_pct, index=out.index).clip(0.0, 100.0)
+        out["kpi_dashboard_cpu_pct_source"] = _source_summary(idle_cols or busy_cols)
 
     if "kpi_dashboard_memory_pct" not in out.columns:
-        mem_cols = _score_columns(out, "memstat", ("memused", "kbmemused", "commit", "swpused"))
-        out["kpi_dashboard_memory_pct"] = _normalise_pct(_row_aggregate(out, mem_cols, "median"))
+        mem_cols = _score_columns(out, "memstat", ("memused",), stats=("last", "mean"))
+        memory = _normalise_pct(_row_aggregate(out, mem_cols, "median"))
+        if memory.isna().all():
+            used_cols = _score_columns(out, "memstat", ("kbmemused",), stats=("last", "mean"))
+            avail_cols = _score_columns(out, "memstat", ("kbavail",), stats=("last", "mean"))
+            used = _row_aggregate(out, used_cols, "median")
+            avail = _row_aggregate(out, avail_cols, "median")
+            memory = (used / (used + avail).replace(0.0, np.nan) * 100.0).clip(0.0, 100.0)
+            mem_cols = used_cols + avail_cols
+        out["kpi_dashboard_memory_pct"] = memory
+        out["kpi_dashboard_memory_pct_source"] = _source_summary(mem_cols)
 
     if "kpi_dashboard_disk_pct" not in out.columns:
-        disk_cols = _score_columns(out, "iostat", ("util", "await", "aqu"))
+        disk_cols = _score_columns(out, "iostat", ("util",), stats=("last", "mean"))
         out["kpi_dashboard_disk_pct"] = _normalise_pct(_row_aggregate(out, disk_cols, "max"))
+        out["kpi_dashboard_disk_pct_source"] = _source_summary(disk_cols)
 
     if "kpi_dashboard_network_mbps" not in out.columns:
-        net_cols = _score_columns(out, "netstat", ("rxkb_s", "txkb_s"))
+        net_cols = _score_columns(out, "netstat", ("rxkb_s", "txkb_s", "rxkb_ss", "txkb_ss"), stats=("last", "mean"))
         out["kpi_dashboard_network_mbps"] = (_row_aggregate(out, net_cols, "sum") / 1024.0).clip(lower=0.0)
+        out["kpi_dashboard_network_mbps_source"] = _source_summary(net_cols)
 
     for col in [
         "kpi_dashboard_cpu_pct",
@@ -164,15 +236,112 @@ def _merge_predictions_with_contract(pred: pd.DataFrame, raw: pd.DataFrame) -> p
     return merged
 
 
-def _choose_thresholds(validation: pd.DataFrame) -> dict[str, float]:
-    score = pd.to_numeric(validation["warning_intensity_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
-    return {
-        "watch_threshold": 0.85,
-        "alert_threshold": 0.95,
-        "min_consecutive_windows": 2.0,
-        "raw_score_q85": float(score.quantile(0.85)),
-        "raw_score_q95": float(score.quantile(0.95)),
-    }
+def _prepare_threshold_frame(validation: pd.DataFrame) -> pd.DataFrame:
+    out = validation.copy()
+    out["alert_score"] = pd.to_numeric(out["warning_intensity_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
+    out["model_score"] = out["alert_score"]
+    out["run_id"] = out["run_id"].astype(str)
+    out["window_ts"] = pd.to_datetime(out["window_ts"], utc=True, errors="coerce")
+    if "window_end" not in out.columns:
+        out["window_end"] = out["window_ts"] + pd.to_timedelta(10, unit="s")
+    else:
+        out["window_end"] = pd.to_datetime(out["window_end"], utc=True, errors="coerce")
+        out["window_end"] = out["window_end"].fillna(out["window_ts"] + pd.to_timedelta(10, unit="s"))
+    if "event_anchor" not in out.columns or out["event_anchor"].isna().all():
+        lead = pd.to_numeric(out.get("strict_lead_sec", np.nan), errors="coerce")
+        out["event_anchor"] = out["window_ts"] + pd.to_timedelta(lead, unit="s")
+    out["event_anchor"] = pd.to_datetime(out["event_anchor"], utc=True, errors="coerce")
+    if "scenario_type" not in out.columns:
+        out["scenario_type"] = np.where(pd.to_numeric(out.get("y_warning", 0), errors="coerce").fillna(0).gt(0), "failure", "normal")
+    return out
+
+
+def _choose_thresholds(validation: pd.DataFrame) -> dict[str, Any]:
+    threshold_frame = _prepare_threshold_frame(validation)
+    score = pd.to_numeric(threshold_frame["alert_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
+    if score.empty:
+        return {
+            "watch_threshold": 0.20,
+            "alert_threshold": 0.30,
+            "min_consecutive_windows": 2.0,
+            "threshold_selection_warning": "validation_score_empty",
+        }
+
+    quantiles = np.linspace(0.55, 0.98, 24)
+    thresholds = sorted({float(score.quantile(q)) for q in quantiles if np.isfinite(score.quantile(q))})
+    thresholds = [value for value in thresholds if value > 0.0]
+    if not thresholds:
+        thresholds = [float(score.max()) if float(score.max()) > 0 else 0.01]
+
+    q70 = float(score.quantile(0.70))
+    candidates: list[dict[str, Any]] = []
+    for alert_threshold in thresholds:
+        watch_threshold = min(alert_threshold * 0.75, q70)
+        watch_threshold = max(0.0, min(watch_threshold, alert_threshold - 1e-6))
+        for consecutive in [1, 2, 3]:
+            trial_thresholds = {
+                "watch_threshold": watch_threshold,
+                "alert_threshold": alert_threshold,
+                "min_consecutive_windows": float(consecutive),
+            }
+            trial = _apply_alert_layer(threshold_frame, trial_thresholds)
+            events = _run_events(trial)
+            metrics = _metrics_summary(trial, events).iloc[0].to_dict()
+            candidates.append(
+                {
+                    **trial_thresholds,
+                    "run_alert_f1": _safe_float(metrics.get("run_alert_f1")),
+                    "failure_run_recall": _safe_float(metrics.get("failure_run_recall")),
+                    "run_alert_precision": _safe_float(metrics.get("run_alert_precision")),
+                    "false_alert_run_rate": _safe_float(metrics.get("false_alert_run_rate")),
+                    "alert_density": _safe_float(metrics.get("alert_density")),
+                    "median_lead_time_sec": _safe_float(metrics.get("median_lead_time_sec")),
+                }
+            )
+
+    feasible = [
+        row
+        for row in candidates
+        if row["false_alert_run_rate"] <= 0.20 and row["alert_density"] <= 0.35
+    ]
+    if feasible:
+        best = sorted(
+            feasible,
+            key=lambda row: (
+                row["run_alert_f1"],
+                row["failure_run_recall"],
+                row["run_alert_precision"],
+                -row["alert_density"],
+            ),
+            reverse=True,
+        )[0]
+        warning = ""
+    else:
+        best = sorted(
+            candidates,
+            key=lambda row: (
+                -row["false_alert_run_rate"],
+                -row["alert_density"],
+                row["run_alert_f1"],
+                row["failure_run_recall"],
+            ),
+            reverse=True,
+        )[0]
+        warning = "no_validation_policy_met_false_alert_or_density_caps"
+
+    best.update(
+        {
+            "raw_score_q70": float(score.quantile(0.70)),
+            "raw_score_q85": float(score.quantile(0.85)),
+            "raw_score_q95": float(score.quantile(0.95)),
+            "candidate_count": int(len(candidates)),
+            "feasible_candidate_count": int(len(feasible)),
+            "threshold_selection_warning": warning,
+            "selection_split": "validation",
+            "score_column": "warning_intensity_score",
+        }
+    )
+    return best
 
 
 def _rank_calibrate_score(values: pd.Series, validation_values: pd.Series) -> pd.Series:
@@ -187,18 +356,28 @@ def _rank_calibrate_score(values: pd.Series, validation_values: pd.Series) -> pd
 
 def _apply_alert_layer(frame: pd.DataFrame, thresholds: dict[str, float]) -> pd.DataFrame:
     out = frame.sort_values(["run_id", "window_ts"]).copy()
-    score = pd.to_numeric(out["model_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
+    score_col = "alert_score" if "alert_score" in out.columns else "model_score"
+    score = pd.to_numeric(out[score_col], errors="coerce").fillna(0.0).clip(0.0, 1.0)
     out["watch_threshold"] = float(thresholds["watch_threshold"])
     out["alert_threshold"] = float(thresholds["alert_threshold"])
     high = score.ge(out["alert_threshold"])
 
     confirmed = pd.Series(False, index=out.index)
+    confirmed_now = pd.Series(False, index=out.index)
     for _, idx in out.groupby("run_id", sort=False).groups.items():
         run_high = high.loc[idx].astype(int)
         run_confirmed = run_high.rolling(int(thresholds["min_consecutive_windows"]), min_periods=int(thresholds["min_consecutive_windows"])).sum()
-        confirmed.loc[idx] = run_confirmed.ge(int(thresholds["min_consecutive_windows"])).to_numpy()
+        current = run_confirmed.ge(int(thresholds["min_consecutive_windows"]))
+        confirmed_now.loc[idx] = current.to_numpy()
+        confirmed.loc[idx] = current.cummax().to_numpy()
 
     out["alert_fired"] = confirmed.astype(int)
+    out["alert_confirmed_now"] = confirmed_now.astype(int)
+    started = pd.Series(False, index=out.index)
+    for _, idx in out.groupby("run_id", sort=False).groups.items():
+        run_alert = confirmed.loc[idx].astype(int)
+        started.loc[idx] = run_alert.eq(1) & run_alert.shift(1, fill_value=0).eq(0)
+    out["alert_started"] = started.astype(int)
     incident_now = (
         out["event_anchor"].notna()
         & out["window_ts"].le(out["event_anchor"])
@@ -233,6 +412,11 @@ def _add_incident_markers(frame: pd.DataFrame) -> pd.DataFrame:
         distance = (pd.to_datetime(group["window_end"], utc=True, errors="coerce") - target_ts).abs()
         if not distance.empty:
             out.loc[distance.idxmin(), "incident_marker"] = 1
+    incident = pd.to_numeric(out["incident_marker"], errors="coerce").fillna(0).astype(int).eq(1)
+    if "alert_state" in out.columns:
+        out.loc[incident, "alert_state"] = "incident"
+    if "pred_state" in out.columns:
+        out.loc[incident, "pred_state"] = "risk"
     return out
 
 
@@ -260,21 +444,20 @@ def _add_fusion_diagnostics(frame: pd.DataFrame) -> pd.DataFrame:
     denom = (log_signal + kpi_signal).replace(0.0, np.nan)
     out["log_only_score"] = log_signal
     out["kpi_only_score"] = kpi_signal
-    log_fallback = pd.Series(np.where(log_available.gt(0), 1.0, 0.5), index=out.index, dtype=float)
-    kpi_fallback = pd.Series(np.where(kpi_available.gt(0), 1.0, 0.5), index=out.index, dtype=float)
-    out["fusion_log_share"] = (log_signal / denom).fillna(log_fallback)
-    out["fusion_kpi_share"] = (kpi_signal / denom).fillna(kpi_fallback)
     both = log_available.gt(0) & kpi_available.gt(0)
-    out.loc[both & denom.isna(), ["fusion_log_share", "fusion_kpi_share"]] = 0.5
+    share_available = both & denom.notna()
+    out["fusion_log_share"] = np.where(share_available, log_signal / denom, np.nan)
+    out["fusion_kpi_share"] = np.where(share_available, kpi_signal / denom, np.nan)
     out["fusion_gate"] = out["fusion_log_share"]
-    out["fusion_share_available"] = (log_available.gt(0) | kpi_available.gt(0)).astype(int)
+    out["fusion_share_available"] = share_available.astype(int)
     out["fusion_display_mode"] = np.select(
         [
+            share_available,
             log_available.gt(0) & kpi_available.gt(0),
             log_available.gt(0),
             kpi_available.gt(0),
         ],
-        ["log+kpi", "log-only fallback", "kpi-only fallback"],
+        ["diagnostic log+kpi", "log+kpi; zero auxiliary signal", "log-only fallback", "kpi-only fallback"],
         default="no modality",
     )
     return out
@@ -286,7 +469,15 @@ def _mark_demo_cases(frame: pd.DataFrame) -> pd.DataFrame:
     out["demo_case_id"] = ""
 
     events = _run_events(out)
-    early_runs = events.loc[events["event_type"].eq("early_alert")].copy()
+    early_runs_all = events.loc[
+        events["event_type"].eq("early_alert")
+        & pd.to_numeric(events.get("n_windows", 0), errors="coerce").fillna(0).ge(3)
+        & pd.to_numeric(events.get("lead_time_sec", 0), errors="coerce").fillna(0).ge(20)
+    ].copy()
+    early_runs_with_context = early_runs_all.loc[
+        pd.to_numeric(early_runs_all.get("pre_alert_windows", 0), errors="coerce").fillna(0).ge(1)
+    ].copy()
+    early_runs = early_runs_with_context if not early_runs_with_context.empty else early_runs_all
     normal_runs = events.loc[events["event_type"].eq("normal_no_alert")].copy()
     used_runs: set[str] = set()
 
@@ -316,17 +507,23 @@ def _mark_demo_cases(frame: pd.DataFrame) -> pd.DataFrame:
             both=("has_both_modalities", "mean"),
         )
         early_ids = set(early_runs["run_id"].astype(str))
+        all_early_ids = set(early_runs_all["run_id"].astype(str))
         candidates = run_scores.loc[run_scores.index.astype(str).isin(early_ids)].copy()
+        all_candidates = run_scores.loc[run_scores.index.astype(str).isin(all_early_ids)].copy()
         both = candidates.loc[candidates["both"].ge(0.5)].copy()
         if not both.empty:
             both["_balance"] = 1.0 - (both["log_share"] - 0.5).abs() * 2.0
             assign_first("multimodal_success", both.sort_values(["_balance", "max_score"], ascending=[False, False]))
-        log_driven = candidates.copy()
-        if not log_driven.empty:
-            assign_first("log_driven_success", log_driven.sort_values(["log_share", "max_score"], ascending=False))
         kpi_driven = candidates.copy()
         if not kpi_driven.empty:
             assign_first("kpi_driven_success", kpi_driven.sort_values(["kpi_share", "max_score"], ascending=False))
+        log_driven = candidates.copy()
+        if not log_driven.empty:
+            assign_first("log_driven_success", log_driven.sort_values(["log_share", "max_score"], ascending=False))
+        if "log_driven_success" not in set(out["demo_case_kind"].astype(str)) and not all_candidates.empty:
+            assign_first("log_driven_success", all_candidates.sort_values(["log_share", "max_score"], ascending=False))
+        if "kpi_driven_success" not in set(out["demo_case_kind"].astype(str)) and not all_candidates.empty:
+            assign_first("kpi_driven_success", all_candidates.sort_values(["kpi_share", "max_score"], ascending=False))
 
     if not normal_runs.empty:
         normal_score = out.loc[out["run_id"].astype(str).isin(normal_runs["run_id"].astype(str))].groupby("run_id")["model_score"].max()
@@ -339,10 +536,14 @@ def _mark_demo_cases(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _run_events(frame: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
-    for run_id, group in frame.sort_values("window_ts").groupby("run_id", sort=False):
+    for run_id, run_group in frame.sort_values("window_ts").groupby("run_id", sort=False):
+        group = run_group.sort_values("window_ts").copy()
         scenario_type = str(group.get("scenario_type", pd.Series("", index=group.index)).fillna("").iloc[0])
         is_failure = scenario_type == "failure" or pd.to_numeric(group.get("y_warning", 0), errors="coerce").fillna(0).max() > 0
-        alerts = group.loc[pd.to_numeric(group.get("alert_fired", 0), errors="coerce").fillna(0).astype(int).eq(1)]
+        alert_flags = pd.to_numeric(group.get("alert_fired", 0), errors="coerce").fillna(0).astype(int).eq(1)
+        alerts = group.loc[alert_flags]
+        alert_positions = np.flatnonzero(alert_flags.to_numpy())
+        first_alert_window_index = int(alert_positions[0]) if alert_positions.size else -1
         event_anchor = pd.to_datetime(group.get("event_anchor", pd.Series(pd.NaT, index=group.index)), utc=True, errors="coerce").dropna()
         anchor = event_anchor.iloc[0] if not event_anchor.empty else pd.NaT
         first_alert_ts = pd.NaT if alerts.empty else pd.Timestamp(alerts["window_ts"].iloc[0])
@@ -369,6 +570,8 @@ def _run_events(frame: pd.DataFrame) -> pd.DataFrame:
                 "event_anchor": anchor,
                 "lead_time_sec": lead,
                 "n_windows": int(len(group)),
+                "first_alert_window_index": first_alert_window_index,
+                "pre_alert_windows": int(first_alert_window_index if first_alert_window_index >= 0 else len(group)),
                 "alert_windows": int(pd.to_numeric(group.get("alert_fired", 0), errors="coerce").fillna(0).sum()),
                 "max_model_score": float(pd.to_numeric(group.get("model_score", 0.0), errors="coerce").fillna(0.0).max()),
             }
@@ -405,7 +608,158 @@ def _metrics_summary(frame: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     )
 
 
-def _strict_metric_rows(model_run_dir: Path = MODEL_RUN_DIR) -> list[dict[str, Any]]:
+def _series_summary(series: pd.Series) -> dict[str, float | int | None]:
+    values = pd.to_numeric(series, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+    if values.empty:
+        return {"count": 0, "min": None, "p50": None, "p90": None, "p95": None, "max": None}
+    return {
+        "count": int(values.size),
+        "min": float(values.min()),
+        "p50": float(values.quantile(0.50)),
+        "p90": float(values.quantile(0.90)),
+        "p95": float(values.quantile(0.95)),
+        "max": float(values.max()),
+    }
+
+
+def _top_fraction_metrics(labels: pd.Series, scores: pd.Series, fraction: float = 0.10) -> dict[str, float]:
+    y = pd.to_numeric(labels, errors="coerce").fillna(0).astype(int)
+    s = pd.to_numeric(scores, errors="coerce").replace([np.inf, -np.inf], np.nan)
+    valid = s.notna()
+    y = y.loc[valid]
+    s = s.loc[valid]
+    n = int(len(s))
+    positives = int(y.sum())
+    if n == 0:
+        return {
+            "precision": np.nan,
+            "recall": np.nan,
+            "f1": np.nan,
+            "prevalence": np.nan,
+            "threshold_value": np.nan,
+            "selected_windows": 0.0,
+        }
+    k = max(1, int(np.ceil(n * fraction)))
+    chosen = s.sort_values(ascending=False).head(k).index
+    pred = pd.Series(0, index=s.index, dtype=int)
+    pred.loc[chosen] = 1
+    tp = int(((pred == 1) & (y == 1)).sum())
+    fp = int(((pred == 1) & (y == 0)).sum())
+    fn = int(((pred == 0) & (y == 1)).sum())
+    precision = tp / max(tp + fp, 1)
+    recall = tp / max(tp + fn, 1)
+    f1 = 2 * precision * recall / max(precision + recall, 1e-9)
+    return {
+        "precision": float(precision),
+        "recall": float(recall),
+        "f1": float(f1),
+        "prevalence": float(positives / max(n, 1)),
+        "threshold_value": float(s.loc[chosen].min()),
+        "selected_windows": float(k),
+    }
+
+
+def _fill_row_metrics(table: pd.DataFrame, mask: pd.Series, labels: pd.Series, scores: pd.Series) -> None:
+    metrics = _top_fraction_metrics(labels, scores, fraction=0.10)
+    for column in ["precision", "recall", "f1", "prevalence", "threshold_value", "selected_windows"]:
+        if column not in table.columns:
+            table[column] = np.nan
+        table.loc[mask, column] = metrics[column]
+    table.loc[mask, "threshold_policy"] = "top_10_percent"
+
+
+def _enrich_baseline_table(table: pd.DataFrame, model_run_dir: Path, artifact_dir: Path) -> pd.DataFrame:
+    if table.empty:
+        return table
+    out = table.copy()
+    if "threshold_policy" not in out.columns:
+        out["threshold_policy"] = ""
+
+    pred_path = model_run_dir / "ensemble_predictions.csv"
+    if pred_path.exists():
+        pred = pd.read_csv(pred_path)
+        if {"y_warning", "warning_intensity_score"}.issubset(pred.columns):
+            mask = out["target"].astype(str).eq("y_warning") & out["baseline"].astype(str).eq("final-multimodal-strict-intensity-fusion")
+            if mask.any():
+                _fill_row_metrics(out, mask, pred["y_warning"], pred["warning_intensity_score"])
+        if {"y_risk", "state_score"}.issubset(pred.columns):
+            mask = out["target"].astype(str).eq("y_risk") & out["baseline"].astype(str).eq("final-multimodal-state-score")
+            if mask.any():
+                _fill_row_metrics(out, mask, pred["y_risk"], pred["state_score"])
+
+    baseline_pred_path = artifact_dir / "reports" / "baseline_predictions.csv.gz"
+    if baseline_pred_path.exists() and {"target", "baseline"}.issubset(out.columns):
+        baseline_pred = pd.read_csv(baseline_pred_path)
+        required = {"label", "target", "baseline", "score"}
+        if required.issubset(baseline_pred.columns):
+            split = baseline_pred.get("split", pd.Series("test", index=baseline_pred.index)).fillna("test").astype(str)
+            baseline_pred = baseline_pred.loc[split.eq("test")].copy()
+            for (target, baseline), group in baseline_pred.groupby(["target", "baseline"], sort=False):
+                mask = out["target"].astype(str).eq(str(target)) & out["baseline"].astype(str).eq(str(baseline))
+                if mask.any():
+                    _fill_row_metrics(out, mask, group["label"], group["score"])
+
+    numeric_cols = [
+        "average_precision",
+        "roc_auc",
+        "precision",
+        "recall",
+        "f1",
+        "prevalence",
+        "threshold_value",
+        "selected_windows",
+    ]
+    for col in numeric_cols:
+        if col in out.columns:
+            out[col] = pd.to_numeric(out[col], errors="coerce")
+    return out
+
+
+def _bundle_quality_report(
+    replay: pd.DataFrame,
+    validation: pd.DataFrame,
+    thresholds: dict[str, Any],
+    events: pd.DataFrame,
+) -> dict[str, Any]:
+    state_counts = replay.get("alert_state", pd.Series(dtype=str)).fillna("normal").astype(str).value_counts().to_dict()
+    source_columns = {}
+    for key in [
+        "kpi_dashboard_cpu_pct_source",
+        "kpi_dashboard_memory_pct_source",
+        "kpi_dashboard_disk_pct_source",
+        "kpi_dashboard_network_mbps_source",
+    ]:
+        if key in replay.columns:
+            value = replay[key].dropna().astype(str)
+            source_columns[key] = value.iloc[0] if not value.empty else ""
+
+    return {
+        "score_semantics": {
+            "model_score_raw": "сырой warning_intensity_score; это не вероятность сбоя",
+            "model_score_rank": "ранг сырого score относительно validation; диагностический канал",
+            "risk_score_raw": "строгий risk/state канал; не используется как главный alert-score",
+            "fusion_balance": "diagnostic auxiliary-head balance; это не причинная атрибуция",
+        },
+        "score_distribution": {
+            "test_model_score_raw": _series_summary(replay.get("model_score_raw", pd.Series(dtype=float))),
+            "test_model_score_rank": _series_summary(replay.get("model_score_rank", pd.Series(dtype=float))),
+            "test_risk_score_raw": _series_summary(replay.get("risk_score_raw", pd.Series(dtype=float))),
+            "validation_warning_intensity_score": _series_summary(validation.get("warning_intensity_score", pd.Series(dtype=float))),
+        },
+        "alert_layer": thresholds,
+        "alert_state_counts": {str(k): int(v) for k, v in state_counts.items()},
+        "proxy_windows": int((replay.get("score_source", pd.Series("", index=replay.index)).astype(str) != "model_store").sum()),
+        "kpi_sources": source_columns,
+        "run_event_counts": events.get("event_type", pd.Series(dtype=str)).fillna("").astype(str).value_counts().to_dict(),
+        "warnings": [
+            "model_score_rank не является вероятностью сбоя",
+            "fusion balance не является causal attribution",
+            "alert_state является решением alert-layer, а incident_marker является фактом события",
+        ],
+    }
+
+
+def _strict_metric_rows(model_run_dir: Path = MODEL_RUN_DIR, artifact_dir: Path = ARTIFACT_DIR) -> list[dict[str, Any]]:
     ensemble = pd.read_csv(model_run_dir / "ensemble_metrics.csv")
     rows: list[dict[str, Any]] = []
     for _, row in ensemble.iterrows():
@@ -453,7 +807,8 @@ def _strict_metric_rows(model_run_dir: Path = MODEL_RUN_DIR) -> list[dict[str, A
     ]
     keep = baseline.loc[baseline["target"].isin(["y_warning", "y_risk"]), [col for col in keep_cols if col in baseline.columns]].copy()
     rows.extend(keep.to_dict("records"))
-    return rows
+    enriched = _enrich_baseline_table(pd.DataFrame(rows), model_run_dir, artifact_dir)
+    return enriched.to_dict("records")
 
 
 def _model_card(report: dict[str, Any], metrics: pd.DataFrame) -> str:
@@ -465,8 +820,8 @@ def _model_card(report: dict[str, Any], metrics: pd.DataFrame) -> str:
             "",
             "**Финальная модель:** мультимодальная strict-intensity fusion.",
             "",
-            "Модель использует логи, KPI и маски доступности модальностей. Основной score для дашборда — `warning_intensity_score`, "
-            "диагностический strict risk-channel — `state_score`.",
+            "Модель использует логи, KPI и маски доступности модальностей. Основной score для дашборда — `model_score_raw` "
+            "на основе `warning_intensity_score`; диагностический strict risk-channel — `risk_score_raw` / `state_score`.",
             "",
             "## Alert-layer",
             "",
@@ -506,13 +861,23 @@ def export_bundle(
 
     replay = _merge_predictions_with_contract(pred, raw)
     replay = _add_dashboard_kpis(replay)
+    replay["binary_warning_score"] = pd.to_numeric(
+        replay["warning_score"] if "warning_score" in replay.columns else pd.Series(np.nan, index=replay.index),
+        errors="coerce",
+    ).clip(0.0, 1.0)
+    replay["binary_risk_score"] = pd.to_numeric(
+        replay["risk_score"] if "risk_score" in replay.columns else pd.Series(np.nan, index=replay.index),
+        errors="coerce",
+    ).clip(0.0, 1.0)
     replay["warning_intensity_score_raw"] = pd.to_numeric(replay["warning_intensity_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
-    replay["model_score"] = _rank_calibrate_score(replay["warning_intensity_score_raw"], validation["warning_intensity_score"])
-    replay["alert_score"] = replay["model_score"]
-    replay["warning_score"] = replay["model_score"]
+    replay["model_score_raw"] = replay["warning_intensity_score_raw"]
+    replay["model_score_rank"] = _rank_calibrate_score(replay["model_score_raw"], validation["warning_intensity_score"])
+    replay["model_score"] = replay["model_score_raw"]
+    replay["alert_score"] = replay["model_score_raw"]
+    replay["warning_score"] = replay["warning_intensity_score_raw"]
     replay["strict_state_score"] = pd.to_numeric(replay["state_score"], errors="coerce").fillna(0.0).clip(0.0, 1.0)
     replay["risk_score_raw"] = replay["strict_state_score"]
-    replay["risk_score"] = replay["model_score"]
+    replay["risk_score"] = replay["risk_score_raw"]
     replay["time_to_failure_sec"] = pd.to_numeric(replay.get("strict_lead_sec", np.nan), errors="coerce")
     replay["model_mode"] = "final_multimodal_strict_intensity"
     replay["model_name"] = "Мультимодальная strict-intensity fusion"
@@ -525,8 +890,9 @@ def export_bundle(
 
     events = _run_events(replay)
     metrics = _metrics_summary(replay, events)
-    strict_rows = _strict_metric_rows(model_run_dir)
+    strict_rows = _strict_metric_rows(model_run_dir, out_dir.parent)
     baseline_table = pd.DataFrame(strict_rows)
+    quality_report = _bundle_quality_report(replay, validation, thresholds, events)
 
     report = {
         "model_name": "Мультимодальная strict-intensity fusion",
@@ -535,11 +901,13 @@ def export_bundle(
         "source_dir": str(model_run_dir.relative_to(ROOT)) if model_run_dir.is_relative_to(ROOT) else str(model_run_dir),
         "contract_path": str(contract_path.relative_to(ROOT)) if contract_path.is_relative_to(ROOT) else str(contract_path),
         "contract_mode": "strict_explicit_only_gap10",
-        "primary_dashboard_score": "warning_intensity_score",
+        "primary_dashboard_score": "model_score_raw",
         "diagnostic_risk_channel": "state_score",
         "score_source": "model_store",
         "proxy_fallback_windows": 0,
         "alert_layer": thresholds,
+        "score_semantics": quality_report["score_semantics"],
+        "bundle_quality_report": quality_report,
         "run_level_metrics": metrics.to_dict("records"),
         "strict_research_metrics": strict_rows,
         "baseline_diagnostics": [],
@@ -556,6 +924,7 @@ def export_bundle(
     pd.DataFrame(strict_rows).to_csv(out_dir / "strict_research_summary.csv", index=False)
     _write_json(out_dir / "dashboard_model_report.json", report)
     _write_json(out_dir / "product_acceptance_report.json", report)
+    _write_json(out_dir / "bundle_quality_report.json", quality_report)
     (out_dir / "model_card_product.md").write_text(_model_card(report, metrics), encoding="utf-8")
     return report
 

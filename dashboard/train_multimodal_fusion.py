@@ -1458,7 +1458,7 @@ def main() -> None:
     parser.add_argument("--intensity-lambda", type=float, default=0.25)
     parser.add_argument("--intensity-mode", choices=["auto", "lead_time", "binary"], default="auto")
     parser.add_argument("--intensity-risk-horizon-sec", type=float, default=30.0)
-    parser.add_argument("--intensity-warning-horizon-sec", type=float, default=120.0)
+    parser.add_argument("--intensity-warning-horizon-sec", type=float, default=180.0)
     parser.add_argument("--pretrained-kpi-path", default=None)
     parser.add_argument("--allow-pretrained-kpi-feature-mismatch", action="store_true")
     parser.add_argument("--freeze-pretrained-kpi-epochs", type=int, default=0)

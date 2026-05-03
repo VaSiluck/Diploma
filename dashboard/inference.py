@@ -27,6 +27,7 @@ DEBUG_ARTIFACT_FILES = [
     "inference_store.csv",
     "alert_events.csv",
     "metrics_summary.csv",
+    "bundle_quality_report.json",
     "feature_manifest.json",
     "preprocessing_manifest.json",
     "model_config.json",

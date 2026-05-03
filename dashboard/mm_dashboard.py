@@ -113,7 +113,7 @@ def _move_replay(delta: int, total_steps: int) -> None:
 
 def render_header(case: pd.Series, current: pd.Series, step_idx: int, total_steps: int, mode: str) -> None:
     state = str(current.get("alert_state", current.get("pred_state", "normal"))).lower()
-    risk = safe_float(current.get("model_score", current.get("alert_score", current.get("risk_score", 0.0))), 0.0)
+    risk = safe_float(current.get("alert_score", current.get("model_score_raw", current.get("model_score", 0.0))), 0.0)
     tone = "danger" if state in {"alert", "incident"} else ("warning" if state == "watch" else "success")
     mode_value = "Scoring" if mode == "model_scoring" else "Preview"
     mode_sub = "финальная модель" if mode == "model_scoring" else "без model bundle"
@@ -131,9 +131,9 @@ def render_header(case: pd.Series, current: pd.Series, step_idx: int, total_step
             top_card("Состояние alert-слоя", STATE_LABELS.get(state, state), state_sub, tone=state_tone),
             (
                 "<div class='top-card'>"
-                "<div class='top-label'>Оценка модели</div>"
+                "<div class='top-label'>Оценка alert-слоя</div>"
                 f"<div class='top-risk' style='color:{risk_color}'>{format_score(risk)}</div>"
-                "<div class='top-sub'>текущий шаг</div>"
+                "<div class='top-sub'>raw score, не вероятность</div>"
                 "</div>"
             ),
         ]
@@ -349,7 +349,9 @@ def render_kpi_panel(run_df: pd.DataFrame, step_idx: int, kpi_columns: list[str]
 
 
 def render_side_panel(current: pd.Series, view, inference) -> None:
-    risk = safe_float(current.get("model_score", current.get("alert_score", current.get("risk_score", 0.0))), 0.0)
+    risk = safe_float(current.get("alert_score", current.get("model_score_raw", current.get("model_score", 0.0))), 0.0)
+    rank_score = safe_float(current.get("model_score_rank", np.nan), np.nan)
+    strict_risk = safe_float(current.get("risk_score_raw", current.get("risk_score", np.nan)), np.nan)
     warning = safe_float(current.get("warning_score", risk), risk)
     state = str(current.get("alert_state", current.get("pred_state", state_from_score(risk)))).lower()
     model_label = str(view.dashboard_report.get("model_name", "финальная мультимодальная модель") or "финальная мультимодальная модель")
@@ -372,11 +374,13 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
     with st.container(border=True):
         st.markdown("<div class='section-title'>Сводка alert-слоя</div>", unsafe_allow_html=True)
         rows = [
-            ("Оценка модели", format_score(risk)),
+            ("Оценка alert-слоя", format_score(risk)),
+            ("Ранг среди validation-окон", "n/a" if not np.isfinite(rank_score) else format_score(rank_score)),
+            ("Strict risk-channel", "n/a" if not np.isfinite(strict_risk) else format_score(strict_risk)),
             ("Порог наблюдения", format_score(safe_float(current.get("watch_threshold", np.nan), np.nan))),
             ("Порог тревоги", format_score(safe_float(current.get("alert_threshold", current.get("threshold_risk", np.nan)), np.nan))),
             ("Состояние alert-слоя", STATE_LABELS.get(state, state)),
-            ("Уверенность", "n/a" if view.mode != "model_scoring" else format_score(safe_float(current.get("confidence", 0.0)))),
+            ("Диагностический warning", format_score(warning)),
             ("Разметка", anchor_label),
             ("Модель", "Preview" if view.mode != "model_scoring" else f"Финальная модель: {model_label}"),
             ("Событие run", str(current.get("run_event_label", "n/a") or "n/a")),
@@ -410,15 +414,15 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
             kpi_score_text = format_score(kpi_only_score) if np.isfinite(kpi_only_score) else "н/д"
             st.markdown(
                 (
-                    f"<div class='side-row'><div class='side-k'>Доля логов</div><div class='side-v'>{log_share_text}</div></div>"
-                    f"<div class='side-row'><div class='side-k'>Доля KPI</div><div class='side-v'>{kpi_share_text}</div></div>"
+                    f"<div class='side-row'><div class='side-k'>Баланс log-head</div><div class='side-v'>{log_share_text}</div></div>"
+                    f"<div class='side-row'><div class='side-k'>Баланс KPI-head</div><div class='side-v'>{kpi_share_text}</div></div>"
                     f"<div class='side-row'><div class='side-k'>log-only score</div><div class='side-v'>{log_score_text}</div></div>"
                     f"<div class='side-row'><div class='side-k'>KPI-only score</div><div class='side-v'>{kpi_score_text}</div></div>"
                     f"<div class='side-row'><div class='side-k'>Режим</div><div class='side-v'>{html.escape(str(current.get('fusion_display_mode', 'log+kpi' if log_available and kpi_available else 'fallback')))}</div></div>"
                 ),
                 unsafe_allow_html=True,
             )
-        st.caption("Доли считаются из отдельных log-only и KPI-only оценок в этом окне. Это диагностическое сравнение сигналов, а не доказательство причинного вклада или качества baseline.")
+        st.caption("Это диагностический баланс auxiliary log-head/KPI-head. Он не является причинной атрибуцией и не доказывает качество отдельного baseline.")
 
     with st.container(border=True):
         st.markdown("<div class='section-title'>Пояснение</div>", unsafe_allow_html=True)
@@ -489,6 +493,19 @@ def render_about(bundle, inference, view) -> None:
         if view.dashboard_report:
             st.markdown("#### Dashboard diagnostics")
             st.json(view.dashboard_report, expanded=False)
+
+        quality = view.dashboard_report.get("bundle_quality_report", {}) if isinstance(view.dashboard_report, dict) else {}
+        if quality:
+            st.markdown("#### Bundle quality summary")
+            score_distribution = quality.get("score_distribution", {})
+            state_counts = quality.get("alert_state_counts", {})
+            quality_rows = [
+                {"Показатель": "proxy windows", "Значение": str(quality.get("proxy_windows", "n/a"))},
+                {"Показатель": "alert states", "Значение": str(state_counts)},
+                {"Показатель": "raw score p50", "Значение": str(score_distribution.get("test_model_score_raw", {}).get("p50", "n/a"))},
+                {"Показатель": "rank score p50", "Значение": str(score_distribution.get("test_model_score_rank", {}).get("p50", "n/a"))},
+            ]
+            st.dataframe(pd.DataFrame(quality_rows), use_container_width=True, hide_index=True)
 
         if not view.seed_metrics.empty:
             st.markdown("#### Seed metrics")

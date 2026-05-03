@@ -358,7 +358,7 @@ def _prepare_contract_frame(df: pd.DataFrame) -> pd.DataFrame:
         "minutes_before_fail",
         "window_index",
     ]
-    numeric_cols.extend([col for col in out.columns if col.startswith("kpi_")])
+    numeric_cols.extend([col for col in out.columns if col.startswith("kpi_") and not col.endswith("_source")])
     _coerce_numeric(out, sorted(set(numeric_cols)))
 
     for col in ["y_warning", "y_risk", "log_available", "kpi_available", "has_both_modalities"]:
@@ -448,7 +448,7 @@ def load_compact_replay_bundle(
         timeline["macro_window_sec"] = 60
 
     timeline = _prepare_contract_frame(timeline)
-    kpi_columns = [col for col in timeline.columns if col.startswith("kpi_dashboard_")]
+    kpi_columns = [col for col in timeline.columns if col.startswith("kpi_dashboard_") and not col.endswith("_source")]
     checks = [
         ArtifactCheck(
             name="replay_bundle",

@@ -160,16 +160,25 @@ def _target_proxy_scores(df: pd.DataFrame) -> pd.DataFrame:
 def _apply_model_scores(df: pd.DataFrame, inference: InferenceBundleStatus) -> pd.DataFrame:
     if {"model_score", "alert_state"}.issubset(df.columns):
         out = df.copy()
-        score = pd.to_numeric(out["model_score"], errors="coerce")
-        if "alert_score" in out.columns:
-            score = score.fillna(pd.to_numeric(out["alert_score"], errors="coerce"))
-        if "risk_score" in out.columns:
-            score = score.fillna(pd.to_numeric(out["risk_score"], errors="coerce"))
-        score = score.fillna(0.0).clip(0, 1)
-        out["model_score"] = score
-        out["alert_score"] = score
-        out["risk_score"] = score
-        out["warning_score"] = score
+        alert_score = pd.to_numeric(out.get("alert_score", out.get("model_score_raw", out["model_score"])), errors="coerce")
+        model_score = pd.to_numeric(out.get("model_score_raw", out["model_score"]), errors="coerce").fillna(alert_score)
+        alert_score = alert_score.fillna(model_score).fillna(0.0).clip(0, 1)
+        model_score = model_score.fillna(alert_score).fillna(0.0).clip(0, 1)
+        out["model_score_raw"] = model_score
+        out["model_score"] = model_score
+        out["alert_score"] = alert_score
+        if "warning_score" in out.columns:
+            out["warning_score"] = pd.to_numeric(out["warning_score"], errors="coerce").fillna(model_score).clip(0, 1)
+        else:
+            out["warning_score"] = model_score
+        if "risk_score_raw" in out.columns:
+            out["risk_score"] = pd.to_numeric(out["risk_score_raw"], errors="coerce").fillna(0.0).clip(0, 1)
+        elif "risk_score" in out.columns:
+            out["risk_score"] = pd.to_numeric(out["risk_score"], errors="coerce").fillna(0.0).clip(0, 1)
+        else:
+            out["risk_score"] = model_score
+        if "model_score_rank" in out.columns:
+            out["model_score_rank"] = pd.to_numeric(out["model_score_rank"], errors="coerce").clip(0, 1)
         alert_state = out["alert_state"].fillna("normal").astype(str).str.lower()
         out["alert_state"] = alert_state.where(alert_state.isin(["normal", "watch", "alert", "incident"]), "normal")
         out["alert_state_label"] = out["alert_state"].map(STATE_LABELS).fillna("Норма")
@@ -180,7 +189,7 @@ def _apply_model_scores(df: pd.DataFrame, inference: InferenceBundleStatus) -> p
         )
         out["score_source"] = out.get("score_source", "model_store")
         out["score_source"] = out["score_source"].fillna("model_store").replace("", "model_store")
-        out["confidence"] = score
+        out["confidence"] = alert_score
         return out
 
     out = _target_proxy_scores(df)
@@ -324,11 +333,21 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
                 if alert_rows.empty:
                     alert_rows = group.loc[pd.to_numeric(group.get("alert_fired", 0), errors="coerce").fillna(0).astype(int).eq(1)]
                 focus_pool = alert_rows if not alert_rows.empty else group
+                pre_alert_focus: pd.Series | None = None
+                if kind in {"multimodal_success", "log_driven_success", "kpi_driven_success"} and not alert_rows.empty:
+                    first_alert_ts = pd.to_datetime(alert_rows["window_ts"], utc=True, errors="coerce").dropna().min()
+                    ordered = group.sort_values("window_ts").reset_index(drop=True)
+                    ordered_ts = pd.to_datetime(ordered["window_ts"], utc=True, errors="coerce")
+                    positions = np.flatnonzero(ordered_ts.eq(first_alert_ts).to_numpy()) if pd.notna(first_alert_ts) else np.array([], dtype=int)
+                    if positions.size and positions[0] > 0:
+                        pre_alert_focus = ordered.iloc[max(0, int(positions[0]) - 1)]
                 if kind in {"multimodal_success", "log_driven_success", "kpi_driven_success"} and "time_to_failure_sec" in focus_pool.columns:
                     early_pool = focus_pool.loc[pd.to_numeric(focus_pool["time_to_failure_sec"], errors="coerce").ge(10)]
                     if not early_pool.empty:
                         focus_pool = early_pool
-                if kind == "log_driven_success" and {"fusion_log_share", "log_only_score"}.issubset(focus_pool.columns):
+                if pre_alert_focus is not None:
+                    focus = pre_alert_focus
+                elif kind == "log_driven_success" and {"fusion_log_share", "log_only_score"}.issubset(focus_pool.columns):
                     focus = focus_pool.sort_values(["fusion_log_share", "log_only_score", "model_score" if "model_score" in focus_pool.columns else "risk_score"], ascending=[False, False, False]).iloc[0]
                 elif kind == "kpi_driven_success" and {"fusion_kpi_share", "kpi_only_score"}.issubset(focus_pool.columns):
                     focus = focus_pool.sort_values(["fusion_kpi_share", "kpi_only_score", "model_score" if "model_score" in focus_pool.columns else "risk_score"], ascending=[False, False, False]).iloc[0]
@@ -566,14 +585,24 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def run_frame_for_case(timeline: pd.DataFrame, run_id: str, max_steps: int = 36) -> pd.DataFrame:
+def run_frame_for_case(timeline: pd.DataFrame, run_id: str, max_steps: int = 120) -> pd.DataFrame:
     run_df = timeline.loc[timeline["run_id"].eq(str(run_id))].sort_values("window_ts").reset_index(drop=True)
     if run_df.empty:
         return run_df
     if len(run_df) <= max_steps:
         return run_df.copy()
-    positions = np.linspace(0, len(run_df) - 1, max_steps).round().astype(int)
-    positions = np.unique(positions)
+    positions = set(np.linspace(0, len(run_df) - 1, max_steps).round().astype(int).tolist())
+    important = pd.Series(False, index=run_df.index)
+    for col in ["alert_fired", "incident_marker"]:
+        if col in run_df.columns:
+            important |= pd.to_numeric(run_df[col], errors="coerce").fillna(0).astype(int).eq(1)
+    if "alert_state" in run_df.columns:
+        important |= run_df["alert_state"].fillna("").astype(str).str.lower().isin(["alert", "incident"])
+    for pos in np.flatnonzero(important.to_numpy()):
+        for neighbor in [pos - 1, pos, pos + 1]:
+            if 0 <= neighbor < len(run_df):
+                positions.add(int(neighbor))
+    positions = np.array(sorted(positions), dtype=int)
     sampled = run_df.iloc[positions].copy().reset_index(drop=True)
     sampled["_source_pos"] = positions[: len(sampled)]
     return sampled
@@ -767,6 +796,15 @@ def _make_kpi_overview_item(
     }
 
 
+def _short_source_text(value: Any, limit: int = 78) -> str:
+    text = str(value or "").strip()
+    if not text or text.lower() == "nan":
+        return ""
+    if len(text) <= limit:
+        return text
+    return text[: max(limit - 1, 1)] + "…"
+
+
 def build_kpi_evidence(run_df: pd.DataFrame, kpi_columns: list[str], current_idx: int, top_n: int = 6) -> list[dict[str, Any]]:
     if run_df.empty or not kpi_columns:
         return []
@@ -782,6 +820,8 @@ def build_kpi_evidence(run_df: pd.DataFrame, kpi_columns: list[str], current_idx
         for col, title, label, unit, accent, subtitle in compact_specs:
             if col not in run_df.columns:
                 continue
+            source_text = _short_source_text(run_df.iloc[current_idx].get(f"{col}_source", ""))
+            item_subtitle = f"{subtitle} · источник: {source_text}" if source_text else subtitle
             item = _make_kpi_overview_item(
                 title=title,
                 label=label,
@@ -789,7 +829,7 @@ def build_kpi_evidence(run_df: pd.DataFrame, kpi_columns: list[str], current_idx
                 current_idx=current_idx,
                 unit=unit,
                 accent=accent,
-                subtitle=subtitle,
+                subtitle=item_subtitle,
                 columns=[col],
                 run_df=run_df,
             )

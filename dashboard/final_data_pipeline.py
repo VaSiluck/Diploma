@@ -26,8 +26,9 @@ SEED = 42
 MICRO_WINDOW_SEC = 10
 MACRO_WINDOW_SEC = 60
 STRICT_GAP_SEC = 10
-WARNING_HORIZON_SEC = 120
+WARNING_HORIZON_SEC = 180
 RISK_HORIZON_SEC = 30
+PRE_ANCHOR_CONTEXT_SEC = 240
 
 RAW_LOG_RE = re.compile(
     r"^(?P<date>\d{2}/\d{2}/\d{2})\s+"
@@ -356,6 +357,56 @@ def _clean_token(value: str) -> str:
     return value or "value"
 
 
+def _epoch_seconds_to_utc(values: pd.Series) -> pd.Series:
+    numeric = pd.to_numeric(values, errors="coerce")
+    out = pd.Series(pd.NaT, index=values.index, dtype="datetime64[ns, UTC]")
+    valid = np.isfinite(numeric.to_numpy(dtype=float, na_value=np.nan)) & numeric.between(946684800, 4102444800).to_numpy()
+    if valid.any():
+        safe_values = numeric.loc[valid].astype("float64")
+        out.loc[valid] = pd.to_datetime(safe_values, unit="s", utc=True, errors="coerce")
+    return out
+
+
+def _safe_epoch_second(value: str) -> float | None:
+    try:
+        out = float(value)
+    except Exception:
+        return None
+    if not math.isfinite(out) or out < 946684800 or out > 4102444800:
+        return None
+    return out
+
+
+def _read_kpi_timestamp_edges(path: Path) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
+    first: float | None = None
+    last: float | None = None
+    try:
+        with path.open("r", encoding="utf-8", errors="ignore") as fh:
+            header = fh.readline().strip().split()
+            if "TimeStamp" not in header:
+                return None, None
+            ts_idx = header.index("TimeStamp")
+            for line in fh:
+                parts = line.strip().split()
+                if len(parts) <= ts_idx:
+                    continue
+                value = _safe_epoch_second(parts[ts_idx])
+                if value is None:
+                    continue
+                if first is None:
+                    first = value
+                last = value
+    except Exception:
+        return None, None
+    if first is None or last is None:
+        return None, None
+    start = pd.to_datetime(first, unit="s", utc=True, errors="coerce")
+    end = pd.to_datetime(last, unit="s", utc=True, errors="coerce")
+    if pd.isna(start) or pd.isna(end):
+        return None, None
+    return pd.Timestamp(start), pd.Timestamp(end)
+
+
 def _read_kpi_file(path: Path, metric: str) -> pd.DataFrame:
     selected = KPI_SELECTED_COLUMNS.get(metric, [])
     if not selected or not path.exists() or path.name.startswith("."):
@@ -370,7 +421,7 @@ def _read_kpi_file(path: Path, metric: str) -> pd.DataFrame:
     frame = frame.loc[ts_num.notna()].copy()
     if frame.empty:
         return pd.DataFrame()
-    frame["timestamp"] = pd.to_datetime(pd.to_numeric(frame["TimeStamp"], errors="coerce"), unit="s", utc=True, errors="coerce")
+    frame["timestamp"] = _epoch_seconds_to_utc(frame["TimeStamp"])
     frame = frame.dropna(subset=["timestamp"]).copy()
     keep = ["timestamp"] + [col for col in selected if col in frame.columns]
     if len(keep) == 1:
@@ -379,6 +430,27 @@ def _read_kpi_file(path: Path, metric: str) -> pd.DataFrame:
     for col in keep[1:]:
         out[col] = pd.to_numeric(out[col], errors="coerce")
     return out
+
+
+def _kpi_timestamp_bounds(kpi_root: Path) -> tuple[pd.Timestamp | None, pd.Timestamp | None]:
+    instruments = kpi_root / "instruments"
+    if not instruments.exists():
+        return None, None
+    starts: list[pd.Timestamp] = []
+    ends: list[pd.Timestamp] = []
+    for host_dir in sorted([p for p in instruments.iterdir() if p.is_dir() and not p.name.startswith(".")]):
+        for metric in KPI_SELECTED_COLUMNS:
+            path = host_dir / metric
+            if not path.exists() or path.name.startswith("."):
+                continue
+            start, end = _read_kpi_timestamp_edges(path)
+            if start is None or end is None:
+                continue
+            starts.append(start)
+            ends.append(end)
+    if not starts:
+        return None, None
+    return min(starts), max(ends)
 
 
 def _kpi_stats_for_file(path: Path, host: str, metric: str, run_start: pd.Timestamp, n_windows: int) -> pd.DataFrame:
@@ -466,7 +538,20 @@ def build_contract(
     artifact_dir: str | Path = DEFAULT_ARTIFACT_DIR,
     *,
     max_runs: int | None = None,
+    micro_window_sec: int = MICRO_WINDOW_SEC,
+    macro_window_sec: int = MACRO_WINDOW_SEC,
+    strict_gap_sec: int = STRICT_GAP_SEC,
+    warning_horizon_sec: int = WARNING_HORIZON_SEC,
+    risk_horizon_sec: int = RISK_HORIZON_SEC,
+    pre_anchor_context_sec: int = PRE_ANCHOR_CONTEXT_SEC,
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
+    global MICRO_WINDOW_SEC, MACRO_WINDOW_SEC, STRICT_GAP_SEC, WARNING_HORIZON_SEC, RISK_HORIZON_SEC, PRE_ANCHOR_CONTEXT_SEC
+    MICRO_WINDOW_SEC = int(micro_window_sec)
+    MACRO_WINDOW_SEC = int(macro_window_sec)
+    STRICT_GAP_SEC = int(strict_gap_sec)
+    WARNING_HORIZON_SEC = int(warning_horizon_sec)
+    RISK_HORIZON_SEC = int(risk_horizon_sec)
+    PRE_ANCHOR_CONTEXT_SEC = int(pre_anchor_context_sec)
     set_seed(SEED)
     raw_root = Path(raw_data)
     if not raw_root.is_absolute():
@@ -518,11 +603,20 @@ def build_contract(
             excluded.append({"run_id": run_id, "reason": "failure run without explicit log anchor"})
             continue
 
-        run_start = _floor_time(log_events["timestamp"].min(), MICRO_WINDOW_SEC)
+        log_start = pd.Timestamp(log_events["timestamp"].min())
+        log_end = pd.Timestamp(log_events["timestamp"].max())
+        kpi_start, kpi_end = _kpi_timestamp_bounds(kpi_root)
+        observed_start_candidates = [log_start] + ([kpi_start] if kpi_start is not None else [])
+        observed_end_candidates = [log_end] + ([kpi_end] if kpi_end is not None else [])
         if scenario_type == "failure" and pd.notna(anchor):
+            context_sec = max(PRE_ANCHOR_CONTEXT_SEC, WARNING_HORIZON_SEC + STRICT_GAP_SEC)
+            context_start = pd.Timestamp(anchor) - pd.Timedelta(seconds=context_sec)
+            observed_start = min(observed_start_candidates)
+            run_start = _floor_time(max(observed_start, context_start), MICRO_WINDOW_SEC)
             run_end = _ceil_time(anchor, MICRO_WINDOW_SEC)
         else:
-            run_end = _ceil_time(log_events["timestamp"].max() + pd.Timedelta(seconds=MICRO_WINDOW_SEC), MICRO_WINDOW_SEC)
+            run_start = _floor_time(min(observed_start_candidates), MICRO_WINDOW_SEC)
+            run_end = _ceil_time(max(observed_end_candidates) + pd.Timedelta(seconds=MICRO_WINDOW_SEC), MICRO_WINDOW_SEC)
         n_windows = int(max(1, math.ceil((run_end - run_start).total_seconds() / MICRO_WINDOW_SEC)))
 
         kpi = _build_kpi_features_for_run(kpi_root, run_start, n_windows)
@@ -630,6 +724,7 @@ def build_contract(
             "gap_sec": STRICT_GAP_SEC,
             "warning_horizon_sec": WARNING_HORIZON_SEC,
             "risk_horizon_sec": RISK_HORIZON_SEC,
+            "pre_anchor_context_sec": PRE_ANCHOR_CONTEXT_SEC,
         },
         "coverage": {
             "log_available_share": float(contract["log_available"].mean()),
@@ -778,8 +873,24 @@ def run_pipeline(
     artifact_dir: str | Path = DEFAULT_ARTIFACT_DIR,
     *,
     max_runs: int | None = None,
+    micro_window_sec: int = MICRO_WINDOW_SEC,
+    macro_window_sec: int = MACRO_WINDOW_SEC,
+    strict_gap_sec: int = STRICT_GAP_SEC,
+    warning_horizon_sec: int = WARNING_HORIZON_SEC,
+    risk_horizon_sec: int = RISK_HORIZON_SEC,
+    pre_anchor_context_sec: int = PRE_ANCHOR_CONTEXT_SEC,
 ) -> dict[str, Any]:
-    contract, summary = build_contract(raw_data=raw_data, artifact_dir=artifact_dir, max_runs=max_runs)
+    contract, summary = build_contract(
+        raw_data=raw_data,
+        artifact_dir=artifact_dir,
+        max_runs=max_runs,
+        micro_window_sec=micro_window_sec,
+        macro_window_sec=macro_window_sec,
+        strict_gap_sec=strict_gap_sec,
+        warning_horizon_sec=warning_horizon_sec,
+        risk_horizon_sec=risk_horizon_sec,
+        pre_anchor_context_sec=pre_anchor_context_sec,
+    )
     baseline_metrics, _, baseline_payload = build_baselines(contract, artifact_dir=artifact_dir)
     paths = artifact_paths(artifact_dir)
     report = {
@@ -806,8 +917,24 @@ def main() -> None:
     parser.add_argument("--raw-data", default="raw_data")
     parser.add_argument("--artifact-dir", default=str(DEFAULT_ARTIFACT_DIR.relative_to(PROJECT_ROOT)))
     parser.add_argument("--max-runs", type=int, default=None, help="Optional smoke-run limiter.")
+    parser.add_argument("--micro-window-sec", type=int, default=MICRO_WINDOW_SEC)
+    parser.add_argument("--macro-window-sec", type=int, default=MACRO_WINDOW_SEC)
+    parser.add_argument("--strict-gap-sec", type=int, default=STRICT_GAP_SEC)
+    parser.add_argument("--warning-horizon-sec", type=int, default=WARNING_HORIZON_SEC)
+    parser.add_argument("--risk-horizon-sec", type=int, default=RISK_HORIZON_SEC)
+    parser.add_argument("--pre-anchor-context-sec", type=int, default=PRE_ANCHOR_CONTEXT_SEC)
     args = parser.parse_args()
-    report = run_pipeline(raw_data=args.raw_data, artifact_dir=args.artifact_dir, max_runs=args.max_runs)
+    report = run_pipeline(
+        raw_data=args.raw_data,
+        artifact_dir=args.artifact_dir,
+        max_runs=args.max_runs,
+        micro_window_sec=args.micro_window_sec,
+        macro_window_sec=args.macro_window_sec,
+        strict_gap_sec=args.strict_gap_sec,
+        warning_horizon_sec=args.warning_horizon_sec,
+        risk_horizon_sec=args.risk_horizon_sec,
+        pre_anchor_context_sec=args.pre_anchor_context_sec,
+    )
     print(json.dumps(_json_safe(report["written_files"]), ensure_ascii=False, indent=2))
 
 
