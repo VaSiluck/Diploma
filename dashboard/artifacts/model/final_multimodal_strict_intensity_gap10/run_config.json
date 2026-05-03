@@ -25,7 +25,7 @@
   "intensity_lambda": 0.25,
   "intensity_mode": "auto",
   "intensity_risk_horizon_sec": 30.0,
-  "intensity_warning_horizon_sec": 120.0,
+  "intensity_warning_horizon_sec": 180.0,
   "pretrained_kpi_path": null,
   "allow_pretrained_kpi_feature_mismatch": false,
   "freeze_pretrained_kpi_epochs": 0,

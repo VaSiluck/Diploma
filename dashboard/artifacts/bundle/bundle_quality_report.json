@@ -1,0 +1,85 @@
+{
+  "score_semantics": {
+    "model_score_raw": "сырой warning_intensity_score; это не вероятность сбоя",
+    "model_score_rank": "ранг сырого score относительно validation; диагностический канал",
+    "risk_score_raw": "строгий risk/state канал; не используется как главный alert-score",
+    "fusion_balance": "diagnostic auxiliary-head balance; это не причинная атрибуция"
+  },
+  "score_distribution": {
+    "test_model_score_raw": {
+      "count": 691,
+      "min": 0.025675386,
+      "p50": 0.37831196,
+      "p90": 0.5364037,
+      "p95": 0.6710534699999999,
+      "max": 0.7507474
+    },
+    "test_model_score_rank": {
+      "count": 691,
+      "min": 0.018361581920903956,
+      "p50": 0.6850282485875706,
+      "p90": 0.8361581920903954,
+      "p95": 0.9463276836158192,
+      "max": 0.9957627118644068
+    },
+    "test_risk_score_raw": {
+      "count": 691,
+      "min": 0.016689,
+      "p50": 0.24590278,
+      "p90": 0.34866238,
+      "p95": 0.436184785,
+      "max": 0.521069
+    },
+    "validation_warning_intensity_score": {
+      "count": 708,
+      "min": 0.023030551,
+      "p50": 0.21569526,
+      "p90": 0.61151374,
+      "p95": 0.6755417374999999,
+      "max": 0.7613318
+    }
+  },
+  "alert_layer": {
+    "watch_threshold": 0.38790582099999993,
+    "alert_threshold": 0.6155854371304348,
+    "min_consecutive_windows": 2.0,
+    "run_alert_f1": 0.423076923076923,
+    "failure_run_recall": 0.2894736842105263,
+    "run_alert_precision": 0.7857142857142857,
+    "false_alert_run_rate": 0.1875,
+    "alert_density": 0.08615819209039548,
+    "median_lead_time_sec": 48.0,
+    "raw_score_q70": 0.38790582099999993,
+    "raw_score_q85": 0.5618592299999994,
+    "raw_score_q95": 0.6755417374999999,
+    "candidate_count": 72,
+    "feasible_candidate_count": 13,
+    "threshold_selection_warning": "",
+    "selection_split": "validation",
+    "score_column": "warning_intensity_score"
+  },
+  "alert_state_counts": {
+    "normal": 372,
+    "watch": 251,
+    "alert": 38,
+    "incident": 30
+  },
+  "proxy_windows": 0,
+  "kpi_sources": {
+    "kpi_dashboard_cpu_pct_source": "kpi_master3__cpustat__idle__mean_dim__mean;kpi_master3__cpustat__idle__mean_dim__last;kpi_worker1__cpustat__idle__mean_dim__mean;kpi_worker1__cpustat__idle__mean_dim__last;kpi_worker2__cpustat__idle__mean_dim__mean;kpi_worker2__cpustat__idle__mean_dim__last;kpi_worker3__cpustat__idle__mean_dim__mean;kpi_worker3__cpustat__idle__mean_dim__last;kpi_worker4__cpustat__idle__mean_dim__mean;kpi_worker4__cpustat__idle__mean_dim__last;...(+2)",
+    "kpi_dashboard_memory_pct_source": "kpi_master3__memstat__memused__mean_dim__mean;kpi_master3__memstat__memused__mean_dim__last;kpi_worker1__memstat__memused__mean_dim__mean;kpi_worker1__memstat__memused__mean_dim__last;kpi_worker2__memstat__memused__mean_dim__mean;kpi_worker2__memstat__memused__mean_dim__last;kpi_worker3__memstat__memused__mean_dim__mean;kpi_worker3__memstat__memused__mean_dim__last;kpi_worker4__memstat__memused__mean_dim__mean;kpi_worker4__memstat__memused__mean_dim__last;...(+2)",
+    "kpi_dashboard_disk_pct_source": "kpi_master3__iostat__util__mean_dim__mean;kpi_master3__iostat__util__mean_dim__last;kpi_worker1__iostat__util__mean_dim__mean;kpi_worker1__iostat__util__mean_dim__last;kpi_worker2__iostat__util__mean_dim__mean;kpi_worker2__iostat__util__mean_dim__last;kpi_worker3__iostat__util__mean_dim__mean;kpi_worker3__iostat__util__mean_dim__last;kpi_worker4__iostat__util__mean_dim__mean;kpi_worker4__iostat__util__mean_dim__last;...(+2)",
+    "kpi_dashboard_network_mbps_source": "kpi_master3__netstat__rxkb_ss__mean_dim__mean;kpi_master3__netstat__rxkb_ss__mean_dim__last;kpi_master3__netstat__txkb_ss__mean_dim__mean;kpi_master3__netstat__txkb_ss__mean_dim__last;kpi_worker1__netstat__rxkb_ss__mean_dim__mean;kpi_worker1__netstat__rxkb_ss__mean_dim__last;kpi_worker1__netstat__txkb_ss__mean_dim__mean;kpi_worker1__netstat__txkb_ss__mean_dim__last;kpi_worker2__netstat__rxkb_ss__mean_dim__mean;kpi_worker2__netstat__rxkb_ss__mean_dim__last;...(+14)"
+  },
+  "run_event_counts": {
+    "missed_failure": 27,
+    "normal_no_alert": 22,
+    "false_alert": 3,
+    "early_alert": 3
+  },
+  "warnings": [
+    "model_score_rank не является вероятностью сбоя",
+    "fusion balance не является causal attribution",
+    "alert_state является решением alert-layer, а incident_marker является фактом события"
+  ]
+}
