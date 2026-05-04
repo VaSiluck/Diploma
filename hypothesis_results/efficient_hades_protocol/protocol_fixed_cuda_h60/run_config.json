@@ -1,0 +1,87 @@
+{
+  "run_id": "protocol_fixed_cuda_h60",
+  "root": "C:\\Users\\а\\main\\Diploma",
+  "contract_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
+  "output_dir": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60",
+  "split_protocols": [
+    "current",
+    "stratified_by_workload",
+    "leave_one_workload_out:aggregation",
+    "leave_one_workload_out:join",
+    "leave_one_workload_out:rf",
+    "leave_one_workload_out:svd"
+  ],
+  "leave_one_workloads": [
+    "aggregation",
+    "join",
+    "rf",
+    "svd"
+  ],
+  "variants": [
+    "modern_metric",
+    "efficient_hades"
+  ],
+  "seeds": [
+    42,
+    43,
+    44
+  ],
+  "targets": [
+    "y_warning",
+    "y_risk",
+    "y_anomaly",
+    "horizon_30s",
+    "horizon_60s",
+    "horizon_120s",
+    "horizon_300s"
+  ],
+  "alert_target": "horizon_60s",
+  "max_rows": null,
+  "max_log_events": 32,
+  "log_context_sec": 120,
+  "log_embedding_dim": 128,
+  "modern_log_backend": "static_hash",
+  "embeddinggemma_model": "google/embeddinggemma-300m",
+  "metric_segment_sec": 120,
+  "metric_segment_len": 64,
+  "max_metric_channels": 64,
+  "metric_nodes": [
+    "master3",
+    "worker1",
+    "worker2",
+    "worker3"
+  ],
+  "metric_instruments": [
+    "cpustat",
+    "iostat",
+    "memstat",
+    "netstat",
+    "vmstat"
+  ],
+  "normalization": "workload_norm",
+  "metric_feature_mode": "raw_plus_deviation",
+  "d_model": 128,
+  "heads": 4,
+  "log_layers": 1,
+  "metric_layers": 2,
+  "batch_size": 128,
+  "epochs": 30,
+  "patience": 8,
+  "lr": 0.0007,
+  "weight_decay": 5e-05,
+  "pseudo_labeling": true,
+  "pseudo_start_epoch": 6,
+  "pseudo_low_quantile": 0.1,
+  "pseudo_high_quantile": 0.9,
+  "pseudo_weight": 0.35,
+  "fp_budget": 0.1,
+  "train_monitor": "fp_budget_f1",
+  "monitor_target": "horizon_60s",
+  "validation_fraction": 0.2,
+  "validation_seed": 42,
+  "device": "cuda",
+  "export_onnx": true,
+  "quantization": "dynamic",
+  "calibration_size": 256,
+  "benchmark_batches": 20
+}

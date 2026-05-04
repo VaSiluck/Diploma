@@ -1,0 +1,652 @@
+{
+  "exports": [
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "ok",
+      "split_protocol": "current",
+      "variant": "efficient_hades",
+      "seed": 42,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed42\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed42\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed42\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 38.0620000010822,
+          "latency_ms_per_sample": 0.29735937500845466
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed42\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.27587999799289,
+          "latency_ms_per_sample": 0.28340531248431944
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "current",
+      "variant": "efficient_hades",
+      "seed": 43,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed43\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed43\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed43\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 37.2742650040891,
+          "latency_ms_per_sample": 0.2912051953444461
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed43\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 35.490615002345294,
+          "latency_ms_per_sample": 0.2772704297058226
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "current",
+      "variant": "efficient_hades",
+      "seed": 44,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed44\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed44\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed44\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 37.539935001404956,
+          "latency_ms_per_sample": 0.2932807421984762
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\current\\efficient_hades_seed44\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 35.67223499994725,
+          "latency_ms_per_sample": 0.2786893359370879
+        }
+      ]
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "ok",
+      "split_protocol": "stratified_by_workload",
+      "variant": "efficient_hades",
+      "seed": 42,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed42\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed42\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed42\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 37.94918499770574,
+          "latency_ms_per_sample": 0.2964780077945761
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed42\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.722349998308346,
+          "latency_ms_per_sample": 0.28689335936178395
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "stratified_by_workload",
+      "variant": "efficient_hades",
+      "seed": 43,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 37.76024499675259,
+          "latency_ms_per_sample": 0.2950019140371296
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 37.23885500221513,
+          "latency_ms_per_sample": 0.2909285547048057
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "stratified_by_workload",
+      "variant": "efficient_hades",
+      "seed": 44,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed44\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed44\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed44\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.776955000823364,
+          "latency_ms_per_sample": 0.28731996094393253
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\stratified_by_workload\\efficient_hades_seed44\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.18622999638319,
+          "latency_ms_per_sample": 0.2827049218467437
+        }
+      ]
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:aggregation",
+      "variant": "efficient_hades",
+      "seed": 42,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed42\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed42\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed42\\model_fp32.onnx",
+          "batch_size": 115,
+          "batches": 20,
+          "latency_ms_per_batch": 29.87365000299178,
+          "latency_ms_per_sample": 0.25977086959123286
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed42\\model_int8.onnx",
+          "batch_size": 115,
+          "batches": 20,
+          "latency_ms_per_batch": 28.76018499955535,
+          "latency_ms_per_sample": 0.2500885652135248
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:aggregation",
+      "variant": "efficient_hades",
+      "seed": 43,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed43\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed43\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed43\\model_fp32.onnx",
+          "batch_size": 115,
+          "batches": 20,
+          "latency_ms_per_batch": 31.798870000056922,
+          "latency_ms_per_sample": 0.2765119130439732
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed43\\model_int8.onnx",
+          "batch_size": 115,
+          "batches": 20,
+          "latency_ms_per_batch": 27.98798499861732,
+          "latency_ms_per_sample": 0.24337378259667236
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:aggregation",
+      "variant": "efficient_hades",
+      "seed": 44,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed44\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed44\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed44\\model_fp32.onnx",
+          "batch_size": 115,
+          "batches": 20,
+          "latency_ms_per_batch": 29.78342499700375,
+          "latency_ms_per_sample": 0.2589863043217717
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_aggregation\\efficient_hades_seed44\\model_int8.onnx",
+          "batch_size": 115,
+          "batches": 20,
+          "latency_ms_per_batch": 29.340289998799562,
+          "latency_ms_per_sample": 0.2551329565113005
+        }
+      ]
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:join",
+      "variant": "efficient_hades",
+      "seed": 42,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed42\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed42\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed42\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 37.70307499798946,
+          "latency_ms_per_sample": 0.29455527342179266
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed42\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.1873599991668,
+          "latency_ms_per_sample": 0.28271374999349064
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:join",
+      "variant": "efficient_hades",
+      "seed": 43,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed43\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed43\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed43\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 37.71313999895938,
+          "latency_ms_per_sample": 0.29463390624187014
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed43\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.19693500222638,
+          "latency_ms_per_sample": 0.2827885547048936
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:join",
+      "variant": "efficient_hades",
+      "seed": 44,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed44\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed44\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed44\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.122489999979734,
+          "latency_ms_per_sample": 0.2822069531248417
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_join\\efficient_hades_seed44\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 35.68564000306651,
+          "latency_ms_per_sample": 0.2787940625239571
+        }
+      ]
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:rf",
+      "variant": "efficient_hades",
+      "seed": 42,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed42\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed42\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed42\\model_fp32.onnx",
+          "batch_size": 66,
+          "batches": 20,
+          "latency_ms_per_batch": 17.304990004049614,
+          "latency_ms_per_sample": 0.262196818243176
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed42\\model_int8.onnx",
+          "batch_size": 66,
+          "batches": 20,
+          "latency_ms_per_batch": 16.68620000127703,
+          "latency_ms_per_sample": 0.2528212121405611
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:rf",
+      "variant": "efficient_hades",
+      "seed": 43,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed43\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed43\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed43\\model_fp32.onnx",
+          "batch_size": 66,
+          "batches": 20,
+          "latency_ms_per_batch": 17.62213499750942,
+          "latency_ms_per_sample": 0.2670020454168094
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed43\\model_int8.onnx",
+          "batch_size": 66,
+          "batches": 20,
+          "latency_ms_per_batch": 16.682149999542162,
+          "latency_ms_per_sample": 0.25275984847791155
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:rf",
+      "variant": "efficient_hades",
+      "seed": 44,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed44\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed44\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed44\\model_fp32.onnx",
+          "batch_size": 66,
+          "batches": 20,
+          "latency_ms_per_batch": 16.735725000035018,
+          "latency_ms_per_sample": 0.2535715909096215
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_rf\\efficient_hades_seed44\\model_int8.onnx",
+          "batch_size": 66,
+          "batches": 20,
+          "latency_ms_per_batch": 16.452520003076643,
+          "latency_ms_per_sample": 0.24928060610722186
+        }
+      ]
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "skipped",
+      "reason": "export disabled"
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:svd",
+      "variant": "efficient_hades",
+      "seed": 42,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed42\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed42\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed42\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 35.81244500237517,
+          "latency_ms_per_sample": 0.279784726581056
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed42\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.97138500283472,
+          "latency_ms_per_sample": 0.28883894533464627
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:svd",
+      "variant": "efficient_hades",
+      "seed": 43,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed43\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed43\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed43\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.505240004044026,
+          "latency_ms_per_sample": 0.28519718753159395
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed43\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 35.24372999672778,
+          "latency_ms_per_sample": 0.2753416405994358
+        }
+      ]
+    },
+    {
+      "status": "ok",
+      "split_protocol": "leave_one_workload_out:svd",
+      "variant": "efficient_hades",
+      "seed": 44,
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed44\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed44\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed44\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 38.515129999723285,
+          "latency_ms_per_sample": 0.30089945312283817
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\exports\\leave_one_workload_out_svd\\efficient_hades_seed44\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 36.34407499921508,
+          "latency_ms_per_sample": 0.2839380859313678
+        }
+      ]
+    }
+  ]
+}
