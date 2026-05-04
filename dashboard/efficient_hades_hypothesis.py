@@ -118,6 +118,7 @@ class EfficientHadesConfig:
     pseudo_high_quantile: float
     pseudo_weight: float
     fp_budget: float
+    train_monitor: str
     validation_strategy: str
     validation_fraction: float
     validation_seed: int
@@ -1090,7 +1091,18 @@ def train_model(
     pos_weight = torch.tensor(pos_weight_value(train_y), dtype=torch.float32, device=device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=float(cfg.lr), weight_decay=float(cfg.weight_decay))
     best_state = None
-    best_ap = -1.0
+    best_monitor = -1e18
+    best_epoch = 0
+    best_thresholds = {"best_f1": 0.5, "fp_budget": 0.5}
+    best_val_snapshot = {
+        "val_ap": None,
+        "val_best_f1": None,
+        "val_fp_budget_f1": None,
+        "val_best_f1_precision": None,
+        "val_best_f1_recall": None,
+        "val_fp_budget_precision": None,
+        "val_fp_budget_recall": None,
+    }
     stale = 0
     pseudo = None
     pseudo_manifest = {"enabled": bool(cfg.pseudo_labeling), "count": 0}
@@ -1121,9 +1133,45 @@ def train_model(
         val_loader = DataLoader(HadesDataset(arrays, idx["validation"]), batch_size=int(cfg.batch_size), shuffle=False, num_workers=0)
         val_pred = predict_scores(model, val_loader, device)
         val_ap = safe_ap(val_pred["target"], val_pred["score"]) or 0.0
-        history.append({"epoch": int(epoch), "train_loss": float(np.mean(losses)) if losses else None, "val_ap": float(val_ap)})
-        if val_ap > best_ap:
-            best_ap = float(val_ap)
+        val_thr_best_f1 = best_f1_threshold(val_pred["target"], val_pred["score"])
+        val_metrics_best_f1 = evaluate_binary(val_pred["target"], val_pred["score"], val_thr_best_f1)
+        val_thr_fp_budget = fp_budget_threshold(val_pred["target"], val_pred["score"], cfg.fp_budget)
+        val_metrics_fp_budget = evaluate_binary(val_pred["target"], val_pred["score"], val_thr_fp_budget)
+        monitor_value = float(val_ap)
+        if cfg.train_monitor == "best_f1":
+            monitor_value = float(val_metrics_best_f1["f1"])
+        elif cfg.train_monitor == "fp_budget_f1":
+            monitor_value = float(val_metrics_fp_budget["f1"])
+        history.append(
+            {
+                "epoch": int(epoch),
+                "train_loss": float(np.mean(losses)) if losses else None,
+                "val_ap": float(val_ap),
+                "val_thr_best_f1": float(val_thr_best_f1),
+                "val_f1_best_f1_policy": float(val_metrics_best_f1["f1"]),
+                "val_precision_best_f1_policy": float(val_metrics_best_f1["precision"]),
+                "val_recall_best_f1_policy": float(val_metrics_best_f1["recall"]),
+                "val_thr_fp_budget": float(val_thr_fp_budget),
+                "val_f1_fp_budget_policy": float(val_metrics_fp_budget["f1"]),
+                "val_precision_fp_budget_policy": float(val_metrics_fp_budget["precision"]),
+                "val_recall_fp_budget_policy": float(val_metrics_fp_budget["recall"]),
+                "train_monitor": cfg.train_monitor,
+                "train_monitor_value": float(monitor_value),
+            }
+        )
+        if monitor_value > best_monitor:
+            best_monitor = float(monitor_value)
+            best_epoch = int(epoch)
+            best_thresholds = {"best_f1": float(val_thr_best_f1), "fp_budget": float(val_thr_fp_budget)}
+            best_val_snapshot = {
+                "val_ap": float(val_ap),
+                "val_best_f1": float(val_metrics_best_f1["f1"]),
+                "val_fp_budget_f1": float(val_metrics_fp_budget["f1"]),
+                "val_best_f1_precision": float(val_metrics_best_f1["precision"]),
+                "val_best_f1_recall": float(val_metrics_best_f1["recall"]),
+                "val_fp_budget_precision": float(val_metrics_fp_budget["precision"]),
+                "val_fp_budget_recall": float(val_metrics_fp_budget["recall"]),
+            }
             best_state = {key: value.detach().cpu().clone() for key, value in model.state_dict().items()}
             stale = 0
         else:
@@ -1132,7 +1180,15 @@ def train_model(
                 break
     if best_state is not None:
         model.load_state_dict(best_state)
-    return model, {"best_val_ap": best_ap, "history": history, "pseudo": pseudo_manifest}
+    return model, {
+        "best_epoch": int(best_epoch),
+        "best_monitor": float(best_monitor),
+        "best_thresholds": best_thresholds,
+        "best_val_snapshot": best_val_snapshot,
+        "history": history,
+        "pseudo": pseudo_manifest,
+        "train_monitor": cfg.train_monitor,
+    }
 
 
 def benchmark_torch_latency(model: CrossModalHades, arrays: dict[str, np.ndarray], indices: np.ndarray, cfg: EfficientHadesConfig, device: torch.device) -> dict:
@@ -1326,8 +1382,9 @@ def train_variant_seed(
     test_loader = DataLoader(HadesDataset(arrays, idx["test"]), batch_size=int(cfg.batch_size), shuffle=False, num_workers=0)
     val_pred = predict_scores(model, val_loader, device)
     test_pred = predict_scores(model, test_loader, device)
-    f1_thr = best_f1_threshold(val_pred["target"], val_pred["score"])
-    fp_thr = fp_budget_threshold(val_pred["target"], val_pred["score"], cfg.fp_budget)
+    train_thresholds = train_info.get("best_thresholds", {}) if isinstance(train_info, dict) else {}
+    f1_thr = float(train_thresholds.get("best_f1", best_f1_threshold(val_pred["target"], val_pred["score"])))
+    fp_thr = float(train_thresholds.get("fp_budget", fp_budget_threshold(val_pred["target"], val_pred["score"], cfg.fp_budget)))
 
     state_path = output_dir / "models" / f"efficient_hades_{variant}_seed{seed}.pt"
     state_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1401,6 +1458,9 @@ def train_variant_seed(
                     "state_path": str(state_path),
                     "model_bytes": model_file_size(state_path),
                     "torch_latency_ms_per_sample": torch_bench.get("latency_ms_per_sample"),
+                    "train_monitor": train_info.get("train_monitor"),
+                    "train_monitor_value": train_info.get("best_monitor"),
+                    "train_selected_epoch": train_info.get("best_epoch"),
                 }
             )
     return {
@@ -1530,6 +1590,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pseudo-high-quantile", type=float, default=0.90)
     parser.add_argument("--pseudo-weight", type=float, default=0.35)
     parser.add_argument("--fp-budget", type=float, default=0.10)
+    parser.add_argument("--train-monitor", choices=["ap", "best_f1", "fp_budget_f1"], default="fp_budget_f1")
     parser.add_argument("--validation-strategy", choices=["auto", "existing", "run_id_holdout", "workload_holdout"], default="auto")
     parser.add_argument("--validation-fraction", type=float, default=0.20)
     parser.add_argument("--validation-seed", type=int, default=42)
@@ -1587,6 +1648,7 @@ def main() -> None:
         pseudo_high_quantile=args.pseudo_high_quantile,
         pseudo_weight=args.pseudo_weight,
         fp_budget=args.fp_budget,
+        train_monitor=args.train_monitor,
         validation_strategy=args.validation_strategy,
         validation_fraction=args.validation_fraction,
         validation_seed=args.validation_seed,
