@@ -1,0 +1,588 @@
+{
+  "log": {
+    "type": "drain_like_regex",
+    "vocab_size": 1214,
+    "pad_id": 0,
+    "unk_id": 1,
+    "rare_threshold": 2,
+    "top_templates": [
+      {
+        "template": "INFO executor.yarncoarsegrainedexecutorbackend: got assigned task <*>",
+        "count": 18166
+      },
+      {
+        "template": "INFO executor.executor: running task <*> in stage <*> (tid <*>)",
+        "count": 18155
+      },
+      {
+        "template": "INFO executor.executor: finished task <*> in stage <*> (tid <*>). <*> bytes result sent to driver",
+        "count": 17190
+      },
+      {
+        "template": "INFO storage.shuffleblockfetcheriterator: started <*> remote fetches in <*> ms",
+        "count": 11871
+      },
+      {
+        "template": "INFO spark.mapoutputtrackerworker: don't have map outputs for shuffle <*>, fetching them",
+        "count": 8653
+      },
+      {
+        "template": "INFO broadcast.torrentbroadcast: started reading broadcast variable <*> with <*> pieces (estimated total size <*> mib)",
+        "count": 3960
+      },
+      {
+        "template": "INFO broadcast.torrentbroadcast: reading broadcast variable <*> took <*> ms",
+        "count": 3958
+      },
+      {
+        "template": "INFO storage.shuffleblockfetcheriterator: getting <*> (<*> kib) non-empty blocks including <*> (<*> kib) local and <*> (<*> b) host-local and <*> (<*> kib) remote blocks",
+        "count": 3781
+      },
+      {
+        "template": "INFO storage.shuffleblockfetcheriterator: getting <*> (<*> mib) non-empty blocks including <*> (<*> mib) local and <*> (<*> b) host-local and <*> (<*> b) remote blocks",
+        "count": 3230
+      },
+      {
+        "template": "INFO storage.shuffleblockfetcheriterator: getting <*> (<*> kib) non-empty blocks including <*> (<*> kib) local and <*> (<*> b) host-local and <*> (<*> b) remote blocks",
+        "count": 2884
+      },
+      {
+        "template": "INFO spark.mapoutputtrackerworker: doing the fetch; tracker endpoint = nettyrpcendpointref(spark:<*>",
+        "count": 2522
+      },
+      {
+        "template": "INFO spark.mapoutputtrackerworker: got the output locations",
+        "count": 2522
+      },
+      {
+        "template": "INFO spark.mapoutputtrackerworker: updating epoch to <*> and clearing cache",
+        "count": 2110
+      },
+      {
+        "template": "INFO rdd.hadooprdd: input split: <*>",
+        "count": 1622
+      },
+      {
+        "template": "INFO client.transportclientfactory: successfully created connection to master3<*> after <*> ms (<*> ms spent in bootstraps)",
+        "count": 1534
+      },
+      {
+        "template": "INFO storage.shuffleblockfetcheriterator: getting <*> (<*> mib) non-empty blocks including <*> (<*> mib) local and <*> (<*> b) host-local and <*> (<*> mib) remote blocks",
+        "count": 1467
+      },
+      {
+        "template": "INFO executor.executor: <*> block locks were not released by tid = <*>:",
+        "count": 1410
+      },
+      {
+        "template": "INFO storage.blockmanager: removing rdd <*>",
+        "count": 1226
+      },
+      {
+        "template": "INFO codegen.codegenerator: code generated in <*> ms",
+        "count": 1032
+      },
+      {
+        "template": "INFO spark.securitymanager: changing view acls to: root",
+        "count": 834
+      },
+      {
+        "template": "INFO spark.securitymanager: changing modify acls to: root",
+        "count": 834
+      },
+      {
+        "template": "INFO spark.securitymanager: changing view acls groups to:",
+        "count": 834
+      },
+      {
+        "template": "INFO spark.securitymanager: changing modify acls groups to:",
+        "count": 834
+      },
+      {
+        "template": "INFO spark.securitymanager: securitymanager: authentication disabled; ui acls disabled; users with view permissions: set(root); groups with view permissions: set(); users with modify permissions: set(root); groups with modify permissions: set()",
+        "count": 834
+      },
+      {
+        "template": "INFO resource.resourceutils: ==============================================================",
+        "count": 694
+      },
+      {
+        "template": "INFO shuffle.retryingblockfetcher: retrying fetch (<*><*> for <*> outstanding blocks after <*> ms",
+        "count": 649
+      },
+      {
+        "template": "INFO util.signalutils: registered signal handler for term",
+        "count": 486
+      },
+      {
+        "template": "INFO util.signalutils: registered signal handler for hup",
+        "count": 486
+      },
+      {
+        "template": "INFO util.signalutils: registered signal handler for int",
+        "count": 486
+      },
+      {
+        "template": "INFO util.shutdownhookmanager: shutdown hook called",
+        "count": 441
+      },
+      {
+        "template": "INFO output.fileoutputcommitter: file output committer algorithm version is <*>",
+        "count": 432
+      },
+      {
+        "template": "INFO impl.containermanagementprotocolproxy: yarn.client.max-cached-nodemanagers-proxies : <*>",
+        "count": 372
+      },
+      {
+        "template": "INFO output.fileoutputcommitter: saved output of task '<*>' to <*>",
+        "count": 369
+      },
+      {
+        "template": "INFO mapred.sparkhadoopmapredutil: <*>: committed",
+        "count": 369
+      },
+      {
+        "template": "INFO io.hadoopmapredcommitprotocol: using output committer class org.apache.hadoop.mapred.fileoutputcommitter",
+        "count": 360
+      },
+      {
+        "template": "INFO storage.diskblockmanager: created local directory at <*>",
+        "count": 350
+      },
+      {
+        "template": "INFO executor.yarncoarsegrainedexecutorbackend: connecting to driver: spark:<*>",
+        "count": 347
+      },
+      {
+        "template": "INFO resource.resourceutils: resources for spark.executor:",
+        "count": 347
+      },
+      {
+        "template": "INFO executor.yarncoarsegrainedexecutorbackend: successfully registered with driver",
+        "count": 346
+      },
+      {
+        "template": "INFO util.utils: successfully started service 'org.apache.spark.network.netty.nettyblocktransferservice' on port <*>.",
+        "count": 346
+      },
+      {
+        "template": "INFO storage.blockmanager: using org.apache.spark.storage.randomblockreplicationpolicy for block replication policy",
+        "count": 346
+      },
+      {
+        "template": "INFO executor.executor: fetching spark:<*> with timestamp <*>",
+        "count": 342
+      },
+      {
+        "template": "INFO util.utils: fetching spark:<*> to <*>",
+        "count": 342
+      },
+      {
+        "template": "INFO util.utils: copying <*> to <*>",
+        "count": 330
+      },
+      {
+        "template": "INFO executor.executor: adding <*> to class loader",
+        "count": 329
+      },
+      {
+        "template": "INFO yarn.yarnallocator: received <*> containers from yarn, launching executors on <*> of them.",
+        "count": 323
+      },
+      {
+        "template": "INFO memory.memorystore: memorystore started with capacity <*> mib",
+        "count": 321
+      },
+      {
+        "template": "INFO storage.blockmanager: found block rdd_18_0 locally",
+        "count": 316
+      },
+      {
+        "template": "INFO storage.blockmanager: found block rdd_18_3 locally",
+        "count": 316
+      },
+      {
+        "template": "INFO storage.blockmanager: found block rdd_18_1 locally",
+        "count": 316
+      }
+    ],
+    "max_log_events": 32,
+    "context_sec": 120,
+    "runs_parsed": 228,
+    "mean_selected_events": 18.66631980575789,
+    "empty_window_share": 0.36767256330211584
+  },
+  "metric": {
+    "selected_series": [
+      {
+        "base": "kpi_worker1__memstat__kbavail__mean_dim",
+        "source_column": "kpi_worker1__memstat__kbavail__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker4__memstat__kbavail__mean_dim",
+        "source_column": "kpi_worker4__memstat__kbavail__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker5__memstat__kbavail__mean_dim",
+        "source_column": "kpi_worker5__memstat__kbavail__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker2__memstat__kbavail__mean_dim",
+        "source_column": "kpi_worker2__memstat__kbavail__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_master3__memstat__kbavail__mean_dim",
+        "source_column": "kpi_master3__memstat__kbavail__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker3__memstat__kbavail__mean_dim",
+        "source_column": "kpi_worker3__memstat__kbavail__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker2__vmstat__us__mean_dim",
+        "source_column": "kpi_worker2__vmstat__us__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker5__vmstat__us__mean_dim",
+        "source_column": "kpi_worker5__vmstat__us__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker4__vmstat__us__mean_dim",
+        "source_column": "kpi_worker4__vmstat__us__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker1__vmstat__us__mean_dim",
+        "source_column": "kpi_worker1__vmstat__us__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_master3__vmstat__us__mean_dim",
+        "source_column": "kpi_master3__vmstat__us__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker2__vmstat__id__mean_dim",
+        "source_column": "kpi_worker2__vmstat__id__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker5__vmstat__id__mean_dim",
+        "source_column": "kpi_worker5__vmstat__id__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker3__vmstat__us__mean_dim",
+        "source_column": "kpi_worker3__vmstat__us__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker4__vmstat__id__mean_dim",
+        "source_column": "kpi_worker4__vmstat__id__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker1__vmstat__id__mean_dim",
+        "source_column": "kpi_worker1__vmstat__id__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_master3__vmstat__id__mean_dim",
+        "source_column": "kpi_master3__vmstat__id__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker3__vmstat__id__mean_dim",
+        "source_column": "kpi_worker3__vmstat__id__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker2__cpustat__user__mean_dim",
+        "source_column": "kpi_worker2__cpustat__user__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_master3__cpustat__user__mean_dim",
+        "source_column": "kpi_master3__cpustat__user__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker4__cpustat__user__mean_dim",
+        "source_column": "kpi_worker4__cpustat__user__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker5__cpustat__user__mean_dim",
+        "source_column": "kpi_worker5__cpustat__user__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker1__cpustat__user__mean_dim",
+        "source_column": "kpi_worker1__cpustat__user__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_master3__cpustat__idle__mean_dim",
+        "source_column": "kpi_master3__cpustat__idle__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker2__cpustat__idle__mean_dim",
+        "source_column": "kpi_worker2__cpustat__idle__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker4__cpustat__idle__mean_dim",
+        "source_column": "kpi_worker4__cpustat__idle__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker5__cpustat__idle__mean_dim",
+        "source_column": "kpi_worker5__cpustat__idle__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker1__cpustat__idle__mean_dim",
+        "source_column": "kpi_worker1__cpustat__idle__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker3__cpustat__user__mean_dim",
+        "source_column": "kpi_worker3__cpustat__user__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker3__cpustat__idle__mean_dim",
+        "source_column": "kpi_worker3__cpustat__idle__mean_dim__last",
+        "aspect": "cpu"
+      },
+      {
+        "base": "kpi_worker1__memstat__kbmemused__mean_dim",
+        "source_column": "kpi_worker1__memstat__kbmemused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker1__memstat__memused__mean_dim",
+        "source_column": "kpi_worker1__memstat__memused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker5__memstat__memused__mean_dim",
+        "source_column": "kpi_worker5__memstat__memused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker2__memstat__memused__mean_dim",
+        "source_column": "kpi_worker2__memstat__memused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker5__memstat__kbmemused__mean_dim",
+        "source_column": "kpi_worker5__memstat__kbmemused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker2__memstat__kbmemused__mean_dim",
+        "source_column": "kpi_worker2__memstat__kbmemused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker4__memstat__memused__mean_dim",
+        "source_column": "kpi_worker4__memstat__memused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker4__memstat__kbmemused__mean_dim",
+        "source_column": "kpi_worker4__memstat__kbmemused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker1__vmstat__free__mean_dim",
+        "source_column": "kpi_worker1__vmstat__free__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_master3__vmstat__free__mean_dim",
+        "source_column": "kpi_master3__vmstat__free__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_master3__memstat__memused__mean_dim",
+        "source_column": "kpi_master3__memstat__memused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_master3__memstat__kbmemused__mean_dim",
+        "source_column": "kpi_master3__memstat__kbmemused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker2__vmstat__free__mean_dim",
+        "source_column": "kpi_worker2__vmstat__free__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker4__vmstat__free__mean_dim",
+        "source_column": "kpi_worker4__vmstat__free__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker5__vmstat__free__mean_dim",
+        "source_column": "kpi_worker5__vmstat__free__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker3__memstat__swpused__mean_dim",
+        "source_column": "kpi_worker3__memstat__swpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker3__memstat__kbswpused__mean_dim",
+        "source_column": "kpi_worker3__memstat__kbswpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker3__vmstat__free__mean_dim",
+        "source_column": "kpi_worker3__vmstat__free__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker3__memstat__memused__mean_dim",
+        "source_column": "kpi_worker3__memstat__memused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker3__memstat__kbmemused__mean_dim",
+        "source_column": "kpi_worker3__memstat__kbmemused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker3__vmstat__swpd__mean_dim",
+        "source_column": "kpi_worker3__vmstat__swpd__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker2__memstat__kbswpused__mean_dim",
+        "source_column": "kpi_worker2__memstat__kbswpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker2__memstat__swpused__mean_dim",
+        "source_column": "kpi_worker2__memstat__swpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker1__memstat__kbswpused__mean_dim",
+        "source_column": "kpi_worker1__memstat__kbswpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker1__memstat__swpused__mean_dim",
+        "source_column": "kpi_worker1__memstat__swpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker4__memstat__kbswpused__mean_dim",
+        "source_column": "kpi_worker4__memstat__kbswpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker4__memstat__swpused__mean_dim",
+        "source_column": "kpi_worker4__memstat__swpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker5__memstat__kbswpused__mean_dim",
+        "source_column": "kpi_worker5__memstat__kbswpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker5__memstat__swpused__mean_dim",
+        "source_column": "kpi_worker5__memstat__swpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_master3__memstat__kbswpused__mean_dim",
+        "source_column": "kpi_master3__memstat__kbswpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_master3__memstat__swpused__mean_dim",
+        "source_column": "kpi_master3__memstat__swpused__mean_dim__last",
+        "aspect": "memory"
+      },
+      {
+        "base": "kpi_worker2__vmstat__swpd__mean_dim",
+        "source_column": "kpi_worker2__vmstat__swpd__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker1__vmstat__swpd__mean_dim",
+        "source_column": "kpi_worker1__vmstat__swpd__mean_dim__last",
+        "aspect": "other"
+      },
+      {
+        "base": "kpi_worker5__vmstat__swpd__mean_dim",
+        "source_column": "kpi_worker5__vmstat__swpd__mean_dim__last",
+        "aspect": "other"
+      }
+    ],
+    "feature_count": 704,
+    "context_steps": 12,
+    "stats": [
+      "mean",
+      "std",
+      "min",
+      "max",
+      "p95",
+      "p99",
+      "delta",
+      "slope",
+      "spike_count",
+      "missing_count",
+      "robust_zscore_max"
+    ],
+    "aspect_counts": {
+      "memory": 30,
+      "other": 22,
+      "cpu": 12
+    },
+    "spike_z": 3.5
+  },
+  "arrays": {
+    "log_ids": [
+      2883,
+      32
+    ],
+    "metric_features": [
+      2883,
+      704
+    ],
+    "target": [
+      2883
+    ]
+  },
+  "target": "y_anomaly",
+  "architecture": {
+    "log_encoder": "pool",
+    "embedding_dim": 32,
+    "repr_dim": 64,
+    "fusion_variants": [
+      "metric_only",
+      "log_only",
+      "concat",
+      "product_diff",
+      "gated"
+    ],
+    "online_llm_inference": false
+  }
+}

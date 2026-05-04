@@ -1,0 +1,12 @@
+{
+  "status": "ok",
+  "best_variant": "metric_only",
+  "best_seed": 44,
+  "threshold": 0.007439998704940081,
+  "onnx_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\exports\\cheap_hades_metric_only_seed44.onnx",
+  "quantization": {
+    "status": "ok",
+    "mode": "dynamic",
+    "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\exports\\cheap_hades_metric_only_seed44.int8.onnx"
+  }
+}

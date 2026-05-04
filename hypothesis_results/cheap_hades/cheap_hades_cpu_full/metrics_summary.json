@@ -1,0 +1,1469 @@
+{
+  "run_id": "cheap_hades_cpu_full",
+  "output_dir": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full",
+  "split_summary": [
+    {
+      "split": "test",
+      "rows": 691,
+      "runs": 55,
+      "workloads": 4,
+      "anomaly_positives": 228,
+      "warning_positives": 228,
+      "risk_positives": 65,
+      "log_available": 0.48191027496382055,
+      "kpi_available": 0.9681620839363242
+    },
+    {
+      "split": "train",
+      "rows": 1484,
+      "runs": 119,
+      "workloads": 9,
+      "anomaly_positives": 775,
+      "warning_positives": 775,
+      "risk_positives": 146,
+      "log_available": 0.5518867924528302,
+      "kpi_available": 0.9690026954177897
+    },
+    {
+      "split": "validation",
+      "rows": 708,
+      "runs": 54,
+      "workloads": 3,
+      "anomaly_positives": 411,
+      "warning_positives": 411,
+      "risk_positives": 80,
+      "log_available": 0.7090395480225988,
+      "kpi_available": 0.9788135593220338
+    }
+  ],
+  "feature_manifest": {
+    "log": {
+      "type": "drain_like_regex",
+      "vocab_size": 1214,
+      "pad_id": 0,
+      "unk_id": 1,
+      "rare_threshold": 2,
+      "top_templates": [
+        {
+          "template": "INFO executor.yarncoarsegrainedexecutorbackend: got assigned task <*>",
+          "count": 18166
+        },
+        {
+          "template": "INFO executor.executor: running task <*> in stage <*> (tid <*>)",
+          "count": 18155
+        },
+        {
+          "template": "INFO executor.executor: finished task <*> in stage <*> (tid <*>). <*> bytes result sent to driver",
+          "count": 17190
+        },
+        {
+          "template": "INFO storage.shuffleblockfetcheriterator: started <*> remote fetches in <*> ms",
+          "count": 11871
+        },
+        {
+          "template": "INFO spark.mapoutputtrackerworker: don't have map outputs for shuffle <*>, fetching them",
+          "count": 8653
+        },
+        {
+          "template": "INFO broadcast.torrentbroadcast: started reading broadcast variable <*> with <*> pieces (estimated total size <*> mib)",
+          "count": 3960
+        },
+        {
+          "template": "INFO broadcast.torrentbroadcast: reading broadcast variable <*> took <*> ms",
+          "count": 3958
+        },
+        {
+          "template": "INFO storage.shuffleblockfetcheriterator: getting <*> (<*> kib) non-empty blocks including <*> (<*> kib) local and <*> (<*> b) host-local and <*> (<*> kib) remote blocks",
+          "count": 3781
+        },
+        {
+          "template": "INFO storage.shuffleblockfetcheriterator: getting <*> (<*> mib) non-empty blocks including <*> (<*> mib) local and <*> (<*> b) host-local and <*> (<*> b) remote blocks",
+          "count": 3230
+        },
+        {
+          "template": "INFO storage.shuffleblockfetcheriterator: getting <*> (<*> kib) non-empty blocks including <*> (<*> kib) local and <*> (<*> b) host-local and <*> (<*> b) remote blocks",
+          "count": 2884
+        },
+        {
+          "template": "INFO spark.mapoutputtrackerworker: doing the fetch; tracker endpoint = nettyrpcendpointref(spark:<*>",
+          "count": 2522
+        },
+        {
+          "template": "INFO spark.mapoutputtrackerworker: got the output locations",
+          "count": 2522
+        },
+        {
+          "template": "INFO spark.mapoutputtrackerworker: updating epoch to <*> and clearing cache",
+          "count": 2110
+        },
+        {
+          "template": "INFO rdd.hadooprdd: input split: <*>",
+          "count": 1622
+        },
+        {
+          "template": "INFO client.transportclientfactory: successfully created connection to master3<*> after <*> ms (<*> ms spent in bootstraps)",
+          "count": 1534
+        },
+        {
+          "template": "INFO storage.shuffleblockfetcheriterator: getting <*> (<*> mib) non-empty blocks including <*> (<*> mib) local and <*> (<*> b) host-local and <*> (<*> mib) remote blocks",
+          "count": 1467
+        },
+        {
+          "template": "INFO executor.executor: <*> block locks were not released by tid = <*>:",
+          "count": 1410
+        },
+        {
+          "template": "INFO storage.blockmanager: removing rdd <*>",
+          "count": 1226
+        },
+        {
+          "template": "INFO codegen.codegenerator: code generated in <*> ms",
+          "count": 1032
+        },
+        {
+          "template": "INFO spark.securitymanager: changing view acls to: root",
+          "count": 834
+        },
+        {
+          "template": "INFO spark.securitymanager: changing modify acls to: root",
+          "count": 834
+        },
+        {
+          "template": "INFO spark.securitymanager: changing view acls groups to:",
+          "count": 834
+        },
+        {
+          "template": "INFO spark.securitymanager: changing modify acls groups to:",
+          "count": 834
+        },
+        {
+          "template": "INFO spark.securitymanager: securitymanager: authentication disabled; ui acls disabled; users with view permissions: set(root); groups with view permissions: set(); users with modify permissions: set(root); groups with modify permissions: set()",
+          "count": 834
+        },
+        {
+          "template": "INFO resource.resourceutils: ==============================================================",
+          "count": 694
+        },
+        {
+          "template": "INFO shuffle.retryingblockfetcher: retrying fetch (<*><*> for <*> outstanding blocks after <*> ms",
+          "count": 649
+        },
+        {
+          "template": "INFO util.signalutils: registered signal handler for term",
+          "count": 486
+        },
+        {
+          "template": "INFO util.signalutils: registered signal handler for hup",
+          "count": 486
+        },
+        {
+          "template": "INFO util.signalutils: registered signal handler for int",
+          "count": 486
+        },
+        {
+          "template": "INFO util.shutdownhookmanager: shutdown hook called",
+          "count": 441
+        },
+        {
+          "template": "INFO output.fileoutputcommitter: file output committer algorithm version is <*>",
+          "count": 432
+        },
+        {
+          "template": "INFO impl.containermanagementprotocolproxy: yarn.client.max-cached-nodemanagers-proxies : <*>",
+          "count": 372
+        },
+        {
+          "template": "INFO output.fileoutputcommitter: saved output of task '<*>' to <*>",
+          "count": 369
+        },
+        {
+          "template": "INFO mapred.sparkhadoopmapredutil: <*>: committed",
+          "count": 369
+        },
+        {
+          "template": "INFO io.hadoopmapredcommitprotocol: using output committer class org.apache.hadoop.mapred.fileoutputcommitter",
+          "count": 360
+        },
+        {
+          "template": "INFO storage.diskblockmanager: created local directory at <*>",
+          "count": 350
+        },
+        {
+          "template": "INFO executor.yarncoarsegrainedexecutorbackend: connecting to driver: spark:<*>",
+          "count": 347
+        },
+        {
+          "template": "INFO resource.resourceutils: resources for spark.executor:",
+          "count": 347
+        },
+        {
+          "template": "INFO executor.yarncoarsegrainedexecutorbackend: successfully registered with driver",
+          "count": 346
+        },
+        {
+          "template": "INFO util.utils: successfully started service 'org.apache.spark.network.netty.nettyblocktransferservice' on port <*>.",
+          "count": 346
+        },
+        {
+          "template": "INFO storage.blockmanager: using org.apache.spark.storage.randomblockreplicationpolicy for block replication policy",
+          "count": 346
+        },
+        {
+          "template": "INFO executor.executor: fetching spark:<*> with timestamp <*>",
+          "count": 342
+        },
+        {
+          "template": "INFO util.utils: fetching spark:<*> to <*>",
+          "count": 342
+        },
+        {
+          "template": "INFO util.utils: copying <*> to <*>",
+          "count": 330
+        },
+        {
+          "template": "INFO executor.executor: adding <*> to class loader",
+          "count": 329
+        },
+        {
+          "template": "INFO yarn.yarnallocator: received <*> containers from yarn, launching executors on <*> of them.",
+          "count": 323
+        },
+        {
+          "template": "INFO memory.memorystore: memorystore started with capacity <*> mib",
+          "count": 321
+        },
+        {
+          "template": "INFO storage.blockmanager: found block rdd_18_0 locally",
+          "count": 316
+        },
+        {
+          "template": "INFO storage.blockmanager: found block rdd_18_3 locally",
+          "count": 316
+        },
+        {
+          "template": "INFO storage.blockmanager: found block rdd_18_1 locally",
+          "count": 316
+        }
+      ],
+      "max_log_events": 32,
+      "context_sec": 120,
+      "runs_parsed": 228,
+      "mean_selected_events": 18.66631980575789,
+      "empty_window_share": 0.36767256330211584
+    },
+    "metric": {
+      "selected_series": [
+        {
+          "base": "kpi_worker1__memstat__kbavail__mean_dim",
+          "source_column": "kpi_worker1__memstat__kbavail__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker4__memstat__kbavail__mean_dim",
+          "source_column": "kpi_worker4__memstat__kbavail__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker5__memstat__kbavail__mean_dim",
+          "source_column": "kpi_worker5__memstat__kbavail__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker2__memstat__kbavail__mean_dim",
+          "source_column": "kpi_worker2__memstat__kbavail__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_master3__memstat__kbavail__mean_dim",
+          "source_column": "kpi_master3__memstat__kbavail__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker3__memstat__kbavail__mean_dim",
+          "source_column": "kpi_worker3__memstat__kbavail__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker2__vmstat__us__mean_dim",
+          "source_column": "kpi_worker2__vmstat__us__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker5__vmstat__us__mean_dim",
+          "source_column": "kpi_worker5__vmstat__us__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker4__vmstat__us__mean_dim",
+          "source_column": "kpi_worker4__vmstat__us__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker1__vmstat__us__mean_dim",
+          "source_column": "kpi_worker1__vmstat__us__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_master3__vmstat__us__mean_dim",
+          "source_column": "kpi_master3__vmstat__us__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker2__vmstat__id__mean_dim",
+          "source_column": "kpi_worker2__vmstat__id__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker5__vmstat__id__mean_dim",
+          "source_column": "kpi_worker5__vmstat__id__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker3__vmstat__us__mean_dim",
+          "source_column": "kpi_worker3__vmstat__us__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker4__vmstat__id__mean_dim",
+          "source_column": "kpi_worker4__vmstat__id__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker1__vmstat__id__mean_dim",
+          "source_column": "kpi_worker1__vmstat__id__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_master3__vmstat__id__mean_dim",
+          "source_column": "kpi_master3__vmstat__id__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker3__vmstat__id__mean_dim",
+          "source_column": "kpi_worker3__vmstat__id__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker2__cpustat__user__mean_dim",
+          "source_column": "kpi_worker2__cpustat__user__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_master3__cpustat__user__mean_dim",
+          "source_column": "kpi_master3__cpustat__user__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker4__cpustat__user__mean_dim",
+          "source_column": "kpi_worker4__cpustat__user__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker5__cpustat__user__mean_dim",
+          "source_column": "kpi_worker5__cpustat__user__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker1__cpustat__user__mean_dim",
+          "source_column": "kpi_worker1__cpustat__user__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_master3__cpustat__idle__mean_dim",
+          "source_column": "kpi_master3__cpustat__idle__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker2__cpustat__idle__mean_dim",
+          "source_column": "kpi_worker2__cpustat__idle__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker4__cpustat__idle__mean_dim",
+          "source_column": "kpi_worker4__cpustat__idle__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker5__cpustat__idle__mean_dim",
+          "source_column": "kpi_worker5__cpustat__idle__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker1__cpustat__idle__mean_dim",
+          "source_column": "kpi_worker1__cpustat__idle__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker3__cpustat__user__mean_dim",
+          "source_column": "kpi_worker3__cpustat__user__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker3__cpustat__idle__mean_dim",
+          "source_column": "kpi_worker3__cpustat__idle__mean_dim__last",
+          "aspect": "cpu"
+        },
+        {
+          "base": "kpi_worker1__memstat__kbmemused__mean_dim",
+          "source_column": "kpi_worker1__memstat__kbmemused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker1__memstat__memused__mean_dim",
+          "source_column": "kpi_worker1__memstat__memused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker5__memstat__memused__mean_dim",
+          "source_column": "kpi_worker5__memstat__memused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker2__memstat__memused__mean_dim",
+          "source_column": "kpi_worker2__memstat__memused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker5__memstat__kbmemused__mean_dim",
+          "source_column": "kpi_worker5__memstat__kbmemused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker2__memstat__kbmemused__mean_dim",
+          "source_column": "kpi_worker2__memstat__kbmemused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker4__memstat__memused__mean_dim",
+          "source_column": "kpi_worker4__memstat__memused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker4__memstat__kbmemused__mean_dim",
+          "source_column": "kpi_worker4__memstat__kbmemused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker1__vmstat__free__mean_dim",
+          "source_column": "kpi_worker1__vmstat__free__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_master3__vmstat__free__mean_dim",
+          "source_column": "kpi_master3__vmstat__free__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_master3__memstat__memused__mean_dim",
+          "source_column": "kpi_master3__memstat__memused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_master3__memstat__kbmemused__mean_dim",
+          "source_column": "kpi_master3__memstat__kbmemused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker2__vmstat__free__mean_dim",
+          "source_column": "kpi_worker2__vmstat__free__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker4__vmstat__free__mean_dim",
+          "source_column": "kpi_worker4__vmstat__free__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker5__vmstat__free__mean_dim",
+          "source_column": "kpi_worker5__vmstat__free__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker3__memstat__swpused__mean_dim",
+          "source_column": "kpi_worker3__memstat__swpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker3__memstat__kbswpused__mean_dim",
+          "source_column": "kpi_worker3__memstat__kbswpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker3__vmstat__free__mean_dim",
+          "source_column": "kpi_worker3__vmstat__free__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker3__memstat__memused__mean_dim",
+          "source_column": "kpi_worker3__memstat__memused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker3__memstat__kbmemused__mean_dim",
+          "source_column": "kpi_worker3__memstat__kbmemused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker3__vmstat__swpd__mean_dim",
+          "source_column": "kpi_worker3__vmstat__swpd__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker2__memstat__kbswpused__mean_dim",
+          "source_column": "kpi_worker2__memstat__kbswpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker2__memstat__swpused__mean_dim",
+          "source_column": "kpi_worker2__memstat__swpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker1__memstat__kbswpused__mean_dim",
+          "source_column": "kpi_worker1__memstat__kbswpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker1__memstat__swpused__mean_dim",
+          "source_column": "kpi_worker1__memstat__swpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker4__memstat__kbswpused__mean_dim",
+          "source_column": "kpi_worker4__memstat__kbswpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker4__memstat__swpused__mean_dim",
+          "source_column": "kpi_worker4__memstat__swpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker5__memstat__kbswpused__mean_dim",
+          "source_column": "kpi_worker5__memstat__kbswpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker5__memstat__swpused__mean_dim",
+          "source_column": "kpi_worker5__memstat__swpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_master3__memstat__kbswpused__mean_dim",
+          "source_column": "kpi_master3__memstat__kbswpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_master3__memstat__swpused__mean_dim",
+          "source_column": "kpi_master3__memstat__swpused__mean_dim__last",
+          "aspect": "memory"
+        },
+        {
+          "base": "kpi_worker2__vmstat__swpd__mean_dim",
+          "source_column": "kpi_worker2__vmstat__swpd__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker1__vmstat__swpd__mean_dim",
+          "source_column": "kpi_worker1__vmstat__swpd__mean_dim__last",
+          "aspect": "other"
+        },
+        {
+          "base": "kpi_worker5__vmstat__swpd__mean_dim",
+          "source_column": "kpi_worker5__vmstat__swpd__mean_dim__last",
+          "aspect": "other"
+        }
+      ],
+      "feature_count": 704,
+      "context_steps": 12,
+      "stats": [
+        "mean",
+        "std",
+        "min",
+        "max",
+        "p95",
+        "p99",
+        "delta",
+        "slope",
+        "spike_count",
+        "missing_count",
+        "robust_zscore_max"
+      ],
+      "aspect_counts": {
+        "memory": 30,
+        "other": 22,
+        "cpu": 12
+      },
+      "spike_z": 3.5
+    },
+    "arrays": {
+      "log_ids": [
+        2883,
+        32
+      ],
+      "metric_features": [
+        2883,
+        704
+      ],
+      "target": [
+        2883
+      ]
+    },
+    "target": "y_anomaly",
+    "architecture": {
+      "log_encoder": "pool",
+      "embedding_dim": 32,
+      "repr_dim": 64,
+      "fusion_variants": [
+        "metric_only",
+        "log_only",
+        "concat",
+        "product_diff",
+        "gated"
+      ],
+      "online_llm_inference": false
+    }
+  },
+  "comparison_metrics": [
+    {
+      "source": "cheap_hades",
+      "model": "metric_only",
+      "seed": 42,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.5767359453630012,
+      "roc_auc": 0.52642810915317,
+      "precision": 0.5873015873015873,
+      "recall": 0.9902676399026764,
+      "f1": 0.7373188405797102,
+      "false_positives": 286,
+      "missed_anomalies": 4,
+      "true_positives": 407,
+      "true_negatives": 11,
+      "threshold": 9.980553266359494e-05,
+      "best_epoch": 19,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_metric_only_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "metric_only",
+      "seed": 42,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.4960068503850477,
+      "roc_auc": 0.7323708840134895,
+      "precision": 0.3475609756097561,
+      "recall": 1.0,
+      "f1": 0.5158371040723982,
+      "false_positives": 428,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 35,
+      "threshold": 9.980553266359494e-05,
+      "best_epoch": 19,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_metric_only_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "metric_only",
+      "seed": 43,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.5686852040861239,
+      "roc_auc": 0.5182399829601776,
+      "precision": 0.5887445887445888,
+      "recall": 0.9927007299270073,
+      "f1": 0.7391304347826086,
+      "false_positives": 285,
+      "missed_anomalies": 3,
+      "true_positives": 408,
+      "true_negatives": 12,
+      "threshold": 0.0008466988091822713,
+      "best_epoch": 12,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_metric_only_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "metric_only",
+      "seed": 43,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.42600910279781146,
+      "roc_auc": 0.682060172028343,
+      "precision": 0.3383458646616541,
+      "recall": 0.9868421052631579,
+      "f1": 0.503919372900336,
+      "false_positives": 440,
+      "missed_anomalies": 3,
+      "true_positives": 225,
+      "true_negatives": 23,
+      "threshold": 0.0008466988091822713,
+      "best_epoch": 12,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_metric_only_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "metric_only",
+      "seed": 44,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.6607888744915449,
+      "roc_auc": 0.5701131345900203,
+      "precision": 0.6038291605301914,
+      "recall": 0.9975669099756691,
+      "f1": 0.7522935779816514,
+      "false_positives": 269,
+      "missed_anomalies": 1,
+      "true_positives": 410,
+      "true_negatives": 28,
+      "threshold": 0.007439998704940081,
+      "best_epoch": 8,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_metric_only_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "metric_only",
+      "seed": 44,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.5354108056845879,
+      "roc_auc": 0.7696752680838166,
+      "precision": 0.34923076923076923,
+      "recall": 0.9956140350877193,
+      "f1": 0.5170842824601367,
+      "false_positives": 423,
+      "missed_anomalies": 1,
+      "true_positives": 227,
+      "true_negatives": 40,
+      "threshold": 0.007439998704940081,
+      "best_epoch": 8,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_metric_only_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "log_only",
+      "seed": 42,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.5945634619832034,
+      "roc_auc": 0.49727608608387197,
+      "precision": 0.576978417266187,
+      "recall": 0.975669099756691,
+      "f1": 0.7251356238698011,
+      "false_positives": 294,
+      "missed_anomalies": 10,
+      "true_positives": 401,
+      "true_negatives": 3,
+      "threshold": 0.40254735946655273,
+      "best_epoch": 1,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_log_only_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "log_only",
+      "seed": 42,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.4128470656134379,
+      "roc_auc": 0.6324267742791103,
+      "precision": 0.34441087613293053,
+      "recall": 1.0,
+      "f1": 0.5123595505617977,
+      "false_positives": 434,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 29,
+      "threshold": 0.40254735946655273,
+      "best_epoch": 1,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_log_only_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "log_only",
+      "seed": 43,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.5854384703598394,
+      "roc_auc": 0.4753987564206542,
+      "precision": 0.5743145743145743,
+      "recall": 0.9683698296836983,
+      "f1": 0.7210144927536232,
+      "false_positives": 295,
+      "missed_anomalies": 13,
+      "true_positives": 398,
+      "true_negatives": 2,
+      "threshold": 0.2985272800922394,
+      "best_epoch": 1,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_log_only_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "log_only",
+      "seed": 43,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.4104227570038465,
+      "roc_auc": 0.6277329392595961,
+      "precision": 0.32994186046511625,
+      "recall": 0.9956140350877193,
+      "f1": 0.49563318777292575,
+      "false_positives": 461,
+      "missed_anomalies": 1,
+      "true_positives": 227,
+      "true_negatives": 2,
+      "threshold": 0.2985272800922394,
+      "best_epoch": 1,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_log_only_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "log_only",
+      "seed": 44,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.5695141595772095,
+      "roc_auc": 0.4541849967640722,
+      "precision": 0.5728715728715729,
+      "recall": 0.9659367396593674,
+      "f1": 0.7192028985507246,
+      "false_positives": 296,
+      "missed_anomalies": 14,
+      "true_positives": 397,
+      "true_negatives": 1,
+      "threshold": 0.3686282169818878,
+      "best_epoch": 1,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_log_only_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "log_only",
+      "seed": 44,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.3879120114314774,
+      "roc_auc": 0.5818602932818006,
+      "precision": 0.3318777292576419,
+      "recall": 1.0,
+      "f1": 0.49836065573770494,
+      "false_positives": 459,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 4,
+      "threshold": 0.3686282169818878,
+      "best_epoch": 1,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_log_only_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "concat",
+      "seed": 42,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.5909122041773242,
+      "roc_auc": 0.47972015368609044,
+      "precision": 0.593519882179676,
+      "recall": 0.9805352798053528,
+      "f1": 0.7394495412844037,
+      "false_positives": 276,
+      "missed_anomalies": 8,
+      "true_positives": 403,
+      "true_negatives": 21,
+      "threshold": 0.0018400027975440027,
+      "best_epoch": 18,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_concat_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "concat",
+      "seed": 42,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.5247350978623282,
+      "roc_auc": 0.7372020764654618,
+      "precision": 0.3486238532110092,
+      "recall": 1.0,
+      "f1": 0.5170068027210885,
+      "false_positives": 426,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 37,
+      "threshold": 0.0018400027975440027,
+      "best_epoch": 18,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_concat_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "concat",
+      "seed": 43,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.6500826276873061,
+      "roc_auc": 0.5183505779612836,
+      "precision": 0.5858585858585859,
+      "recall": 0.9878345498783455,
+      "f1": 0.7355072463768116,
+      "false_positives": 287,
+      "missed_anomalies": 5,
+      "true_positives": 406,
+      "true_negatives": 10,
+      "threshold": 6.284571034484543e-05,
+      "best_epoch": 30,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_concat_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "concat",
+      "seed": 43,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.457654056809416,
+      "roc_auc": 0.6863703535296124,
+      "precision": 0.3402985074626866,
+      "recall": 1.0,
+      "f1": 0.5077951002227171,
+      "false_positives": 442,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 21,
+      "threshold": 6.284571034484543e-05,
+      "best_epoch": 30,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_concat_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "concat",
+      "seed": 44,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.6226098099779613,
+      "roc_auc": 0.5081307806368633,
+      "precision": 0.5858585858585859,
+      "recall": 0.9878345498783455,
+      "f1": 0.7355072463768116,
+      "false_positives": 287,
+      "missed_anomalies": 5,
+      "true_positives": 406,
+      "true_negatives": 10,
+      "threshold": 0.00019172837113728747,
+      "best_epoch": 18,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_concat_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "concat",
+      "seed": 44,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.4622730510804315,
+      "roc_auc": 0.7062161342882043,
+      "precision": 0.34182908545727136,
+      "recall": 1.0,
+      "f1": 0.5094972067039106,
+      "false_positives": 439,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 24,
+      "threshold": 0.00019172837113728747,
+      "best_epoch": 18,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_concat_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "product_diff",
+      "seed": 42,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.6138396540324715,
+      "roc_auc": 0.5529831977520542,
+      "precision": 0.6051364365971108,
+      "recall": 0.9172749391727494,
+      "f1": 0.7292069632495164,
+      "false_positives": 246,
+      "missed_anomalies": 34,
+      "true_positives": 377,
+      "true_negatives": 51,
+      "threshold": 0.10001413702964783,
+      "best_epoch": 2,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_product_diff_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "product_diff",
+      "seed": 42,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.4001952753905175,
+      "roc_auc": 0.6154749725285136,
+      "precision": 0.3436055469953775,
+      "recall": 0.9780701754385965,
+      "f1": 0.508551881413911,
+      "false_positives": 426,
+      "missed_anomalies": 5,
+      "true_positives": 223,
+      "true_negatives": 37,
+      "threshold": 0.10001413702964783,
+      "best_epoch": 2,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_product_diff_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "product_diff",
+      "seed": 43,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.562795756022215,
+      "roc_auc": 0.49181187380700764,
+      "precision": 0.5757575757575758,
+      "recall": 0.9708029197080292,
+      "f1": 0.7228260869565217,
+      "false_positives": 294,
+      "missed_anomalies": 12,
+      "true_positives": 399,
+      "true_negatives": 3,
+      "threshold": 0.052164416462183,
+      "best_epoch": 2,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_product_diff_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "product_diff",
+      "seed": 43,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.601822780801165,
+      "roc_auc": 0.6917983403432988,
+      "precision": 0.33578792341678937,
+      "recall": 1.0,
+      "f1": 0.5027563395810364,
+      "false_positives": 451,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 12,
+      "threshold": 0.052164416462183,
+      "best_epoch": 2,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_product_diff_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "product_diff",
+      "seed": 44,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.6082069237439609,
+      "roc_auc": 0.5295042886283762,
+      "precision": 0.5858585858585859,
+      "recall": 0.9878345498783455,
+      "f1": 0.7355072463768116,
+      "false_positives": 287,
+      "missed_anomalies": 5,
+      "true_positives": 406,
+      "true_negatives": 10,
+      "threshold": 0.0005623981775715948,
+      "best_epoch": 11,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_product_diff_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "product_diff",
+      "seed": 44,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.4470280598340437,
+      "roc_auc": 0.6768974271531962,
+      "precision": 0.34182908545727136,
+      "recall": 1.0,
+      "f1": 0.5094972067039106,
+      "false_positives": 439,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 24,
+      "threshold": 0.0005623981775715948,
+      "best_epoch": 11,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_product_diff_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "gated",
+      "seed": 42,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.5935635011375027,
+      "roc_auc": 0.5122186995666315,
+      "precision": 0.5858585858585859,
+      "recall": 0.9878345498783455,
+      "f1": 0.7355072463768116,
+      "false_positives": 287,
+      "missed_anomalies": 5,
+      "true_positives": 406,
+      "true_negatives": 10,
+      "threshold": 0.06610403761267662,
+      "best_epoch": 3,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_gated_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "gated",
+      "seed": 42,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.4935406680284302,
+      "roc_auc": 0.6641279223977872,
+      "precision": 0.34080717488789236,
+      "recall": 1.0,
+      "f1": 0.5083612040133779,
+      "false_positives": 441,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 22,
+      "threshold": 0.06610403761267662,
+      "best_epoch": 3,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_gated_seed42.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "gated",
+      "seed": 43,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.6060996057729573,
+      "roc_auc": 0.4738627147386271,
+      "precision": 0.5815295815295816,
+      "recall": 0.9805352798053528,
+      "f1": 0.730072463768116,
+      "false_positives": 290,
+      "missed_anomalies": 8,
+      "true_positives": 403,
+      "true_negatives": 7,
+      "threshold": 0.0008874222787562758,
+      "best_epoch": 15,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_gated_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "gated",
+      "seed": 43,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.5463256337757003,
+      "roc_auc": 0.7699405100223561,
+      "precision": 0.34182908545727136,
+      "recall": 1.0,
+      "f1": 0.5094972067039106,
+      "false_positives": 439,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 24,
+      "threshold": 0.0008874222787562758,
+      "best_epoch": 15,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_gated_seed43.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "gated",
+      "seed": 44,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.6208074876811162,
+      "roc_auc": 0.5491656221583229,
+      "precision": 0.5743145743145743,
+      "recall": 0.9683698296836983,
+      "f1": 0.7210144927536232,
+      "false_positives": 295,
+      "missed_anomalies": 13,
+      "true_positives": 398,
+      "true_negatives": 2,
+      "threshold": 0.048491695076227186,
+      "best_epoch": 3,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_gated_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "cheap_hades",
+      "model": "gated",
+      "seed": 44,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.5641999503149945,
+      "roc_auc": 0.7380072752074571,
+      "precision": 0.33578792341678937,
+      "recall": 1.0,
+      "f1": 0.5027563395810364,
+      "false_positives": 451,
+      "missed_anomalies": 0,
+      "true_positives": 228,
+      "true_negatives": 12,
+      "threshold": 0.048491695076227186,
+      "best_epoch": 3,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\models\\cheap_hades_gated_seed44.pt",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "existing_baseline_predictions",
+      "model": "log-only",
+      "seed": null,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.41456032838740065,
+      "roc_auc": 0.6626880375885719,
+      "precision": 0.41346153846153844,
+      "recall": 0.9429824561403509,
+      "f1": 0.5748663101604278,
+      "false_positives": 305,
+      "missed_anomalies": 13,
+      "true_positives": 215,
+      "true_negatives": 158,
+      "threshold": 0.5,
+      "best_epoch": null,
+      "state_path": null,
+      "threshold_source": "default_0.5_no_validation_predictions"
+    },
+    {
+      "source": "existing_baseline_predictions",
+      "model": "kpi-only",
+      "seed": null,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.4306349570818684,
+      "roc_auc": 0.6261130688492289,
+      "precision": 0.37916666666666665,
+      "recall": 0.7982456140350878,
+      "f1": 0.5141242937853108,
+      "false_positives": 298,
+      "missed_anomalies": 46,
+      "true_positives": 182,
+      "true_negatives": 165,
+      "threshold": 0.5,
+      "best_epoch": null,
+      "state_path": null,
+      "threshold_source": "default_0.5_no_validation_predictions"
+    },
+    {
+      "source": "existing_baseline_predictions",
+      "model": "availability-only",
+      "seed": null,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.3543980456363509,
+      "roc_auc": 0.5571596377552954,
+      "precision": 0.33539412673879443,
+      "recall": 0.9517543859649122,
+      "f1": 0.496,
+      "false_positives": 430,
+      "missed_anomalies": 11,
+      "true_positives": 217,
+      "true_negatives": 33,
+      "threshold": 0.5,
+      "best_epoch": null,
+      "state_path": null,
+      "threshold_source": "default_0.5_no_validation_predictions"
+    },
+    {
+      "source": "existing_baseline_predictions",
+      "model": "fused",
+      "seed": null,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.44509368134091787,
+      "roc_auc": 0.6413076427570005,
+      "precision": 0.37425742574257426,
+      "recall": 0.8289473684210527,
+      "f1": 0.5156889495225102,
+      "false_positives": 316,
+      "missed_anomalies": 39,
+      "true_positives": 189,
+      "true_negatives": 147,
+      "threshold": 0.5,
+      "best_epoch": null,
+      "state_path": null,
+      "threshold_source": "default_0.5_no_validation_predictions"
+    },
+    {
+      "source": "existing_final_model",
+      "model": "final_multimodal:final_multimodal_strict_intensity_gap10",
+      "seed": null,
+      "split": "validation",
+      "target": "y_anomaly",
+      "n": 708,
+      "positives": 411,
+      "prevalence": 0.5805084745762712,
+      "average_precision": 0.6144312753753188,
+      "roc_auc": 0.5921584048104729,
+      "precision": 0.6147672552166934,
+      "recall": 0.9318734793187348,
+      "f1": 0.7408123791102514,
+      "false_positives": 240,
+      "missed_anomalies": 28,
+      "true_positives": 383,
+      "true_negatives": 57,
+      "threshold": 0.0653904976,
+      "best_epoch": null,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model\\final_multimodal_strict_intensity_gap10",
+      "threshold_source": "validation_best_f1"
+    },
+    {
+      "source": "existing_final_model",
+      "model": "final_multimodal:final_multimodal_strict_intensity_gap10",
+      "seed": null,
+      "split": "test",
+      "target": "y_anomaly",
+      "n": 691,
+      "positives": 228,
+      "prevalence": 0.3299565846599132,
+      "average_precision": 0.46204407252967566,
+      "roc_auc": 0.6926935318858702,
+      "precision": 0.33779761904761907,
+      "recall": 0.9956140350877193,
+      "f1": 0.5044444444444445,
+      "false_positives": 445,
+      "missed_anomalies": 1,
+      "true_positives": 227,
+      "true_negatives": 18,
+      "threshold": 0.0653904976,
+      "best_epoch": null,
+      "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model\\final_multimodal_strict_intensity_gap10",
+      "threshold_source": "validation_best_f1"
+    }
+  ],
+  "export_report": {
+    "status": "ok",
+    "best_variant": "metric_only",
+    "best_seed": 44,
+    "threshold": 0.007439998704940081,
+    "onnx_path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\exports\\cheap_hades_metric_only_seed44.onnx",
+    "quantization": {
+      "status": "ok",
+      "mode": "dynamic",
+      "path": "C:\\Users\\а\\main\\Diploma\\hypothesis_results\\cheap_hades\\cheap_hades_cpu_full\\exports\\cheap_hades_metric_only_seed44.int8.onnx"
+    }
+  }
+}
