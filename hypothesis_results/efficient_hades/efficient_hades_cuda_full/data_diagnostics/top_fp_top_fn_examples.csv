@@ -1,0 +1,60 @@
+case_type,variant,seed,score,pred_label,y_anomaly,y_warning,y_risk,run_id,workload,scenario,scenario_type,failure_family,anchor_policy,window_ts,window_end,event_anchor,strict_lead_sec,macro_log_count,macro_warn_count,macro_error_count,macro_keyword_count,micro_log_count,micro_warn_count,micro_error_count,micro_keyword_count
+false_positive,modern_metric,42,0.9997075200080872,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:21:20+00:00,2021-10-25 10:21:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9997071623802184,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:21:40+00:00,2021-10-25 10:21:50+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9997007846832277,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:22:00+00:00,2021-10-25 10:22:10+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996989965438844,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:21:50+00:00,2021-10-25 10:22:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996979236602784,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:24:30+00:00,2021-10-25 10:24:40+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.99969744682312,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:23:10+00:00,2021-10-25 10:23:20+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996957778930664,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:22:20+00:00,2021-10-25 10:22:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996944665908812,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:22:30+00:00,2021-10-25 10:22:40+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996935129165648,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:22:10+00:00,2021-10-25 10:22:20+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996935129165648,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:21:30+00:00,2021-10-25 10:21:40+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999692678451538,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:22:40+00:00,2021-10-25 10:22:50+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996918439865112,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:23:00+00:00,2021-10-25 10:23:10+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996910095214844,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:24:40+00:00,2021-10-25 10:24:50+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999690055847168,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:23:20+00:00,2021-10-25 10:23:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996896982192992,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:23:30+00:00,2021-10-25 10:23:40+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996895790100098,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:22:50+00:00,2021-10-25 10:23:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996877908706664,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:23:40+00:00,2021-10-25 10:23:50+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996864795684814,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:24:20+00:00,2021-10-25 10:24:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996839761734008,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:24:00+00:00,2021-10-25 10:24:10+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996830224990844,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:23:50+00:00,2021-10-25 10:24:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9996829032897948,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:24:10+00:00,2021-10-25 10:24:20+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9993897676467896,1,0,0,0,svd/normal2,svd,normal2,normal,normal,normal_run,2021-10-25 10:21:10+00:00,2021-10-25 10:21:20+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9993120431900024,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:42:20+00:00,2021-10-25 07:42:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9993091821670532,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:42:50+00:00,2021-10-25 07:43:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999303936958313,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:42:40+00:00,2021-10-25 07:42:50+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992969036102296,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:43:50+00:00,2021-10-25 07:44:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992947578430176,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:43:20+00:00,2021-10-25 07:43:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992928504943848,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:44:00+00:00,2021-10-25 07:44:10+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992914199829102,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:42:10+00:00,2021-10-25 07:42:20+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999289870262146,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:41:40+00:00,2021-10-25 07:41:50+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992883801460266,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:45:30+00:00,2021-10-25 07:45:40+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999284327030182,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:41:30+00:00,2021-10-25 07:41:40+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992814660072328,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:45:20+00:00,2021-10-25 07:45:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992805123329164,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:41:00+00:00,2021-10-25 07:41:10+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999278962612152,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:45:10+00:00,2021-10-25 07:45:20+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992768168449402,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:44:20+00:00,2021-10-25 07:44:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999276340007782,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:45:40+00:00,2021-10-25 07:45:50+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992757439613342,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:41:50+00:00,2021-10-25 07:42:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992756247520448,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:44:50+00:00,2021-10-25 07:45:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992751479148864,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:42:00+00:00,2021-10-25 07:42:10+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992733597755432,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:45:50+00:00,2021-10-25 07:46:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999273121356964,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:44:30+00:00,2021-10-25 07:44:40+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992685914039612,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:41:10+00:00,2021-10-25 07:41:20+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992664456367492,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:46:00+00:00,2021-10-25 07:46:10+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992663264274596,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:45:00+00:00,2021-10-25 07:45:10+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992654919624328,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:44:40+00:00,2021-10-25 07:44:50+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9992541670799256,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:41:20+00:00,2021-10-25 07:41:30+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.999245285987854,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:40:50+00:00,2021-10-25 07:41:00+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9991534948349,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:44:10+00:00,2021-10-25 07:44:20+00:00,,,0,0,0,0,0,0,0,0
+false_positive,modern_metric,42,0.9991249442100524,1,0,0,0,svd/normal4,svd,normal4,normal,normal,normal_run,2021-10-25 07:43:00+00:00,2021-10-25 07:43:10+00:00,,,0,0,0,0,0,0,0,0
+false_negative,modern_metric,42,3.3829819585662335e-05,0,1,1,1,join/datanode_killed,join,datanode_killed,failure,datanode_killed,explicit_log_signal,2021-10-22 09:31:00+00:00,2021-10-22 09:31:10+00:00,2021-10-22 09:31:26+00:00,16.0,99,0,0,0,0,0,0,0
+false_negative,modern_metric,42,3.45952357747592e-05,0,1,1,1,join/datanode_killed,join,datanode_killed,failure,datanode_killed,explicit_log_signal,2021-10-22 09:30:50+00:00,2021-10-22 09:31:00+00:00,2021-10-22 09:31:26+00:00,26.0,99,0,0,0,0,0,0,0
+false_negative,modern_metric,42,3.799925252678804e-05,0,1,1,1,rf/datanode_killed,rf,datanode_killed,failure,datanode_killed,explicit_log_signal,2021-10-25 04:50:40+00:00,2021-10-25 04:50:50+00:00,2021-10-25 04:51:06+00:00,16.0,92,0,0,0,89,0,0,0
+false_negative,modern_metric,42,4.518471541814506e-05,0,1,1,0,join/datanode_killed,join,datanode_killed,failure,datanode_killed,explicit_log_signal,2021-10-22 09:30:40+00:00,2021-10-22 09:30:50+00:00,2021-10-22 09:31:26+00:00,36.0,99,0,0,0,0,0,0,0
+false_negative,modern_metric,42,9.287462307838724e-05,0,1,1,0,join/datanode_killed,join,datanode_killed,failure,datanode_killed,explicit_log_signal,2021-10-22 09:30:30+00:00,2021-10-22 09:30:40+00:00,2021-10-22 09:31:26+00:00,46.0,99,0,0,0,34,0,0,0
+false_negative,modern_metric,42,0.0013361793244257,0,1,1,1,join/net_killed,join,net_killed,failure,net_killed,explicit_log_signal,2021-10-22 09:49:00+00:00,2021-10-22 09:49:10+00:00,2021-10-22 09:49:21+00:00,11.0,166,0,0,0,0,0,0,0
+false_negative,modern_metric,42,0.0013512443983927,0,1,1,0,join/net_killed,join,net_killed,failure,net_killed,explicit_log_signal,2021-10-22 09:48:40+00:00,2021-10-22 09:48:50+00:00,2021-10-22 09:49:21+00:00,31.0,184,0,0,0,75,0,0,0
+false_negative,modern_metric,42,0.0014539111871272,0,1,1,1,join/net_killed,join,net_killed,failure,net_killed,explicit_log_signal,2021-10-22 09:48:50+00:00,2021-10-22 09:49:00+00:00,2021-10-22 09:49:21+00:00,21.0,167,0,0,0,2,0,0,0
+false_negative,modern_metric,42,0.0018348264275118,0,1,1,0,join/net_killed,join,net_killed,failure,net_killed,explicit_log_signal,2021-10-22 09:48:30+00:00,2021-10-22 09:48:40+00:00,2021-10-22 09:49:21+00:00,41.0,120,0,0,0,19,0,0,0
