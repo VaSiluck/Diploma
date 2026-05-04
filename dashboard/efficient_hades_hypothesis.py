@@ -20,11 +20,13 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import logging
 import math
 import os
 import random
 import re
 import time
+import warnings
 from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -891,10 +893,11 @@ class LogTransformerEncoder(nn.Module):
     def forward(self, x: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
         tokens = self.proj(x)
         pad = mask <= 0.5
-        no_token = pad.all(dim=1)
-        if bool(no_token.any()):
-            pad = pad.clone()
-            pad[no_token, 0] = False
+        no_token = pad.all(dim=1, keepdim=True)
+        first_col = torch.zeros_like(pad, dtype=torch.bool)
+        first_col[:, :1] = True
+        # Keep at least one unmasked token in all-empty rows without tensor->python branching.
+        pad = pad & ~(no_token & first_col)
         tokens = self.encoder(tokens, src_key_padding_mask=pad)
         return tokens * mask.unsqueeze(-1)
 
@@ -993,10 +996,10 @@ class CrossModalHades(nn.Module):
     @staticmethod
     def safe_pad(mask: torch.Tensor) -> torch.Tensor:
         pad = mask <= 0.5
-        no_token = pad.all(dim=1)
-        if bool(no_token.any()):
-            pad = pad.clone()
-            pad[no_token, 0] = False
+        no_token = pad.all(dim=1, keepdim=True)
+        first_col = torch.zeros_like(pad, dtype=torch.bool)
+        first_col[:, :1] = True
+        pad = pad & ~(no_token & first_col)
         return pad
 
     @staticmethod
@@ -1226,21 +1229,28 @@ def export_onnx(model: CrossModalHades, arrays: dict[str, np.ndarray], path: Pat
     log_mask = torch.from_numpy(arrays["log_mask"][:1]).float()
     metric_seg = torch.from_numpy(arrays["metric_seg"][:1]).float()
     metric_mask = torch.from_numpy(arrays["metric_mask"][:1]).float()
-    torch.onnx.export(
-        model,
-        (log_emb, log_mask, metric_seg, metric_mask),
-        str(path),
-        input_names=["log_emb", "log_mask", "metric_seg", "metric_mask"],
-        output_names=["logit"],
-        dynamic_axes={
-            "log_emb": {0: "batch"},
-            "log_mask": {0: "batch"},
-            "metric_seg": {0: "batch"},
-            "metric_mask": {0: "batch"},
-            "logit": {0: "batch"},
-        },
-        opset_version=17,
-    )
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Constant folding - Only steps=1 can be constant folded.*",
+            category=UserWarning,
+        )
+        torch.onnx.export(
+            model,
+            (log_emb, log_mask, metric_seg, metric_mask),
+            str(path),
+            input_names=["log_emb", "log_mask", "metric_seg", "metric_mask"],
+            output_names=["logit"],
+            dynamic_axes={
+                "log_emb": {0: "batch"},
+                "log_mask": {0: "batch"},
+                "metric_seg": {0: "batch"},
+                "metric_mask": {0: "batch"},
+                "logit": {0: "batch"},
+            },
+            opset_version=17,
+            do_constant_folding=False,
+        )
 
 
 class CalibrationReader:
@@ -1266,11 +1276,19 @@ class CalibrationReader:
 def quantize_onnx(onnx_path: Path, int8_path: Path, arrays: dict[str, np.ndarray], train_idx: np.ndarray, cfg: EfficientHadesConfig) -> dict:
     if cfg.quantization == "none":
         return {"status": "skipped", "mode": "none"}
+    quant_logger = logging.getLogger()
+    prev_level = quant_logger.level
+    quant_logger.setLevel(logging.ERROR)
     try:
         if cfg.quantization == "dynamic":
             from onnxruntime.quantization import QuantType, quantize_dynamic
 
-            quantize_dynamic(str(onnx_path), str(int8_path), weight_type=QuantType.QInt8)
+            quantize_dynamic(
+                str(onnx_path),
+                str(int8_path),
+                weight_type=QuantType.QInt8,
+                op_types_to_quantize=["MatMul", "Gemm", "Attention"],
+            )
         elif cfg.quantization == "static":
             from onnxruntime.quantization import QuantFormat, QuantType, quantize_static
 
@@ -1283,11 +1301,14 @@ def quantize_onnx(onnx_path: Path, int8_path: Path, arrays: dict[str, np.ndarray
                 quant_format=QuantFormat.QDQ,
                 activation_type=QuantType.QUInt8,
                 weight_type=QuantType.QInt8,
+                op_types_to_quantize=["MatMul", "Gemm", "Attention", "Conv"],
             )
         else:
             raise ValueError(f"Unsupported quantization mode: {cfg.quantization}")
     except Exception as exc:
+        quant_logger.setLevel(prev_level)
         return {"status": "failed", "mode": cfg.quantization, "error": f"{type(exc).__name__}: {exc}"}
+    quant_logger.setLevel(prev_level)
     return {"status": "ok", "mode": cfg.quantization, "path": str(int8_path), "bytes": int(int8_path.stat().st_size)}
 
 
@@ -1410,15 +1431,17 @@ def train_variant_seed(
         try:
             export_onnx(model, arrays, onnx_path)
             q_report = quantize_onnx(onnx_path, int8_path, arrays, idx["train"], cfg)
+            onnx_fp32_bench = benchmark_onnx(onnx_path, arrays, idx["test"], cfg)
             export_report = {
                 "status": "ok",
                 "onnx_fp32": str(onnx_path),
                 "onnx_fp32_bytes": model_file_size(onnx_path),
                 "quantization": q_report,
-                "benchmarks": [benchmark_onnx(onnx_path, arrays, idx["test"], cfg)],
+                "benchmarks": [onnx_fp32_bench],
             }
             if int8_path.exists():
-                export_report["benchmarks"].append(benchmark_onnx(int8_path, arrays, idx["test"], cfg))
+                onnx_int8_bench = benchmark_onnx(int8_path, arrays, idx["test"], cfg)
+                export_report["benchmarks"].append(onnx_int8_bench)
                 int8_scores = onnx_predict(int8_path, arrays, idx["test"], int(cfg.batch_size))
                 if int8_scores is not None:
                     y_test = arrays["target"][idx["test"]]
@@ -1429,6 +1452,13 @@ def train_variant_seed(
                             "runtime": "onnx_int8",
                             "threshold_policy": "validation_best_f1",
                             **evaluate_binary(y_test, int8_scores, f1_thr),
+                            "torch_latency_ms_per_sample": onnx_int8_bench.get("latency_ms_per_sample"),
+                            "onnx_latency_ms_per_sample": onnx_int8_bench.get("latency_ms_per_sample"),
+                            "onnx_model_bytes": model_file_size(int8_path),
+                            "state_path": str(state_path),
+                            "train_monitor": train_info.get("train_monitor"),
+                            "train_monitor_value": train_info.get("best_monitor"),
+                            "train_selected_epoch": train_info.get("best_epoch"),
                         }
                     )
                     runtime_metrics.append(
@@ -1438,6 +1468,13 @@ def train_variant_seed(
                             "runtime": "onnx_int8",
                             "threshold_policy": f"validation_fp_budget_{cfg.fp_budget}",
                             **evaluate_binary(y_test, int8_scores, fp_thr),
+                            "torch_latency_ms_per_sample": onnx_int8_bench.get("latency_ms_per_sample"),
+                            "onnx_latency_ms_per_sample": onnx_int8_bench.get("latency_ms_per_sample"),
+                            "onnx_model_bytes": model_file_size(int8_path),
+                            "state_path": str(state_path),
+                            "train_monitor": train_info.get("train_monitor"),
+                            "train_monitor_value": train_info.get("best_monitor"),
+                            "train_selected_epoch": train_info.get("best_epoch"),
                         }
                     )
         except Exception as exc:
