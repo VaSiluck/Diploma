@@ -1,0 +1,92 @@
+{
+  "score_semantics": {
+    "model_score_raw": "primary horizon_300s score; not a calibrated incident probability",
+    "model_score_rank": "rank of horizon_300s score against validation windows",
+    "model_score_120s": "working early-warning channel",
+    "model_score_60s": "aggressive early channel; noisier",
+    "risk_score_30s": "short-horizon risk channel; keep separate from warning/anomaly",
+    "alert_state": "alert-layer state; not the raw model score and not the incident fact"
+  },
+  "score_distribution": {
+    "test_horizon_300s": {
+      "count": 519,
+      "min": 1.2153657280578043e-06,
+      "p50": 0.6236194968223572,
+      "p90": 0.997365140914917,
+      "p95": 0.9998243391513826,
+      "max": 0.9999910593032836
+    },
+    "test_horizon_120s": {
+      "count": 519,
+      "min": 1.5191480073895036e-08,
+      "p50": 0.3500857651233673,
+      "p90": 0.9918800711631774,
+      "p95": 0.9992254972457886,
+      "max": 0.9999788999557496
+    },
+    "test_horizon_60s": {
+      "count": 519,
+      "min": 6.041428246561509e-09,
+      "p50": 0.1509147435426712,
+      "p90": 0.9646525382995604,
+      "p95": 0.9893117904663087,
+      "max": 0.998904585838318
+    },
+    "test_horizon_30s": {
+      "count": 519,
+      "min": 1.8112043420615013e-08,
+      "p50": 0.0425641946494579,
+      "p90": 0.9725766897201538,
+      "p95": 0.9837254703044891,
+      "max": 0.9961718916893004
+    },
+    "validation_horizon_300s": {
+      "count": 588,
+      "min": 2.333069559767864e-08,
+      "p50": 0.6412997841835022,
+      "p90": 0.9978577494621277,
+      "p95": 0.9998334139585495,
+      "max": 0.9999985694885254
+    }
+  },
+  "alert_layer": {
+    "watch_target": "horizon_300s",
+    "watch_threshold": 0.5783348608016968,
+    "alert_confirmation_target": "horizon_60s",
+    "alert_confirmation_threshold": 0.694148461818695,
+    "min_consecutive_windows": 2,
+    "cooldown_windows": 3
+  },
+  "alert_state_counts": {
+    "normal": 219,
+    "alert": 158,
+    "watch": 142
+  },
+  "runtime_slots": {
+    "torch_state": {
+      "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.pt",
+      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
+      "status": "available"
+    },
+    "onnx_fp32": {
+      "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.onnx",
+      "status": "reserved_not_exported"
+    },
+    "onnx_int8": {
+      "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.int8.onnx",
+      "status": "reserved_not_quantized",
+      "quantization_policy": "dynamic INT8 for Linear/attention; static INT8 optional with representative calibration set"
+    }
+  },
+  "run_event_counts": {
+    "early_alert": 19,
+    "missed_failure": 12,
+    "false_alert": 9,
+    "normal_no_alert": 5
+  },
+  "warnings": [
+    "ONNX/INT8 slots are reserved; selected full checkpoint must be copied before true online inference.",
+    "model_score_raw is a ranking/alert score, not an incident probability.",
+    "horizon_30s/y_risk is a separate short-horizon task and should not be averaged into warning."
+  ]
+}
