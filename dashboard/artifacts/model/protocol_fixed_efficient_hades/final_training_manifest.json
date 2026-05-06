@@ -1,0 +1,86 @@
+{
+  "source": "dashboard.training.final_model",
+  "run_id": "final_protocol_fixed_hades",
+  "contract_path": "dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
+  "run_root": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades",
+  "protocol_run_dir": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades",
+  "model_out_dir": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades",
+  "bundle_out_dir": "dashboard\\artifacts\\bundle",
+  "train_command": [
+    "C:\\Users\\а\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+    "-m",
+    "dashboard.modeling.protocol_fixed_hades",
+    "--run-id",
+    "final_protocol_fixed_hades",
+    "--root",
+    "C:\\Users\\а\\main\\Diploma",
+    "--contract-path",
+    "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
+    "--output-dir",
+    "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades",
+    "--device",
+    "cuda",
+    "--variants",
+    "modern_metric",
+    "--seeds",
+    "43",
+    "--split-protocols",
+    "stratified_by_workload",
+    "--leave-one-workloads",
+    "none",
+    "--targets",
+    "default",
+    "--monitor-target",
+    "horizon_60s",
+    "--alert-target",
+    "horizon_60s",
+    "--normalization",
+    "workload_norm",
+    "--metric-feature-mode",
+    "raw_plus_deviation",
+    "--epochs",
+    "30",
+    "--batch-size",
+    "128",
+    "--patience",
+    "8",
+    "--fp-budget",
+    "0.1",
+    "--validation-seed",
+    "43",
+    "--train-monitor",
+    "fp_budget_f1",
+    "--quantization",
+    "dynamic"
+  ],
+  "single_model_policy": {
+    "split_protocol": "stratified_by_workload",
+    "variant": "modern_metric",
+    "seed": 43,
+    "normalization": "workload_norm",
+    "metric_feature_mode": "raw_plus_deviation",
+    "monitor_target": "horizon_60s",
+    "alert_target": "horizon_60s"
+  },
+  "export_report": {
+    "model_name": "Protocol-Fixed Efficient HADES",
+    "model_family": "protocol_fixed_efficient_hades",
+    "runtime": {
+      "torch_state": {
+        "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.pt",
+        "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
+        "status": "available"
+      },
+      "onnx_fp32": {
+        "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.onnx",
+        "status": "reserved_not_exported"
+      },
+      "onnx_int8": {
+        "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.int8.onnx",
+        "status": "reserved_not_quantized",
+        "quantization_policy": "dynamic INT8 for Linear/attention; static INT8 optional with representative calibration set"
+      }
+    },
+    "primary_dashboard_target": "horizon_300s"
+  }
+}

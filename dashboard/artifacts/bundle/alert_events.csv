@@ -1,46 +1,46 @@
 run_id,workload,scenario,scenario_type,event_type,first_alert_ts,event_anchor,lead_time_sec,n_windows,first_alert_window_index,pre_alert_windows,alert_windows,max_model_score
-wordcount/normal4,wordcount,normal4,normal,normal_no_alert,,,,8,-1,8,0,0.4491985142230987
-wordcount/master_killed,wordcount,master_killed,failure,missed_failure,,2021-10-15 05:36:45+00:00,,11,-1,11,0,0.8275326490402222
-sort/normal3,sort,normal3,normal,false_alert,2021-10-15 06:21:00+00:00,,,8,4,4,4,0.7454278469085693
-sort/normal6,sort,normal6,normal,normal_no_alert,,,,8,-1,8,0,0.9209198355674744
-terasort/datanode_suspended,terasort,datanode_suspended,failure,early_alert,2021-10-15 10:39:00+00:00,2021-10-15 10:41:22+00:00,142.0,23,10,10,13,0.9967396855354308
-terasort/late_sub,terasort,late_sub,failure,missed_failure,,2021-10-15 11:29:43+00:00,,16,-1,16,0,0.3037643730640411
-terasort/cpu_stress,terasort,cpu_stress,failure,missed_failure,,2021-10-15 11:36:58+00:00,,16,-1,16,0,0.5967326760292053
-terasort/slow_stress,terasort,slow_stress,failure,missed_failure,,2021-10-15 11:58:23+00:00,,23,-1,23,0,0.9801282286643982
-sleep/normal7,sleep,normal7,normal,false_alert,2021-10-15 14:28:20+00:00,,,17,13,13,4,0.7001665234565735
-nweight/nodemanager_suspended,nweight,nodemanager_suspended,failure,early_alert,2021-10-19 09:35:10+00:00,2021-10-19 09:36:58+00:00,108.0,23,14,14,9,0.9999959468841552
-nweight/worker_killed,nweight,worker_killed,failure,early_alert,2021-10-19 10:31:40+00:00,2021-10-19 10:33:17+00:00,97.0,23,15,15,8,0.9999923706054688
-nweight/master_suspended,nweight,master_suspended,failure,early_alert,2021-10-19 12:05:00+00:00,2021-10-19 12:07:02+00:00,122.0,23,12,12,11,0.9999667406082152
-nweight/2nd_namenode_killed,nweight,2nd_namenode_killed,failure,early_alert,2021-10-19 12:48:40+00:00,2021-10-19 12:49:36+00:00,56.0,23,19,19,4,0.9999516010284424
-graph_pagerank/master_suspended,graph_pagerank,master_suspended,failure,early_alert,2021-10-20 11:10:00+00:00,2021-10-20 11:10:38+00:00,38.0,4,2,2,2,0.6702678799629211
-graph_pagerank/cpu_stress,graph_pagerank,cpu_stress,failure,missed_failure,,2021-10-20 11:24:38+00:00,,4,-1,4,0,0.6595655679702759
-graph_pagerank/normal6,graph_pagerank,normal6,normal,normal_no_alert,,,,9,-1,9,0,0.9797900915145874
-aggregation/normal5,aggregation,normal5,normal,normal_no_alert,,,,12,-1,12,0,0.3586596846580505
-aggregation/normal6,aggregation,normal6,normal,false_alert,2021-10-20 12:56:40+00:00,,,13,2,2,11,0.9992369413375854
-scan/normal1,scan,normal1,normal,false_alert,2021-10-21 00:42:10+00:00,,,13,2,2,4,0.6883693337440491
-scan/normal6,scan,normal6,normal,normal_no_alert,,,,11,-1,11,0,0.4906781315803528
-web_pagerank/normal2,web_pagerank,normal2,normal,false_alert,2021-10-21 06:02:30+00:00,,,21,2,2,4,0.7399478554725647
-web_pagerank/datanode_killed,web_pagerank,datanode_killed,failure,missed_failure,,2021-10-21 06:11:08+00:00,,2,-1,2,0,0.7025868892669678
-repartition/normal6,repartition,normal6,normal,false_alert,2021-10-21 10:26:30+00:00,,,16,2,2,12,0.980325162410736
-repartition/namenode_suspended,repartition,namenode_suspended,failure,early_alert,2021-10-21 10:36:20+00:00,2021-10-21 10:38:01+00:00,101.0,10,1,1,9,0.9688944816589355
-join/normal1,join,normal1,normal,false_alert,2021-10-22 09:12:20+00:00,,,12,2,2,4,0.520782470703125
-join/normal5,join,normal5,normal,normal_no_alert,,,,12,-1,12,0,0.2541943490505218
-als/datanode_suspended,als,datanode_suspended,failure,early_alert,2021-10-22 11:03:10+00:00,2021-10-22 11:04:53+00:00,103.0,10,1,1,9,0.9131004214286804
-als/normal2,als,normal2,normal,false_alert,2021-10-22 11:05:20+00:00,,,7,1,1,4,0.6378763318061829
-als/net_delay,als,net_delay,failure,early_alert,2021-10-22 11:18:40+00:00,2021-10-22 11:19:49+00:00,69.0,9,4,4,5,0.7588642835617065
-als/io_stress,als,io_stress,failure,early_alert,2021-10-22 11:30:00+00:00,2021-10-22 11:32:04+00:00,124.0,14,3,3,11,0.9802268743515016
-als/namenode_suspended,als,namenode_suspended,failure,early_alert,2021-10-22 11:44:30+00:00,2021-10-22 11:45:07+00:00,37.0,7,5,5,2,0.9022133946418762
-bayes/net_killed,bayes,net_killed,failure,early_alert,2021-10-22 12:52:50+00:00,2021-10-22 12:53:49+00:00,59.0,9,5,5,4,0.9456039667129515
-bayes/late_sub,bayes,late_sub,failure,early_alert,2021-10-22 12:54:40+00:00,2021-10-22 12:55:48+00:00,68.0,7,2,2,5,0.8715158700942993
-bayes/memory_stress,bayes,memory_stress,failure,early_alert,2021-10-22 13:00:50+00:00,2021-10-22 13:01:49+00:00,59.0,16,12,12,4,0.9964009523391724
-bayes/master_killed,bayes,master_killed,failure,early_alert,2021-10-22 13:13:30+00:00,2021-10-22 13:14:08+00:00,38.0,6,4,4,2,0.9971133470535278
-bayes/namenode_suspended,bayes,namenode_suspended,failure,early_alert,2021-10-22 13:19:00+00:00,2021-10-22 13:19:41+00:00,41.0,6,3,3,3,0.9700719714164734
-lda/normal2,lda,normal2,normal,false_alert,2021-10-23 09:06:50+00:00,,,6,1,1,4,0.7952703833580017
-lda/io_stress,lda,io_stress,failure,early_alert,2021-10-23 09:28:30+00:00,2021-10-23 09:28:55+00:00,25.0,4,3,3,1,0.9736242294311525
-rf/datanode_killed,rf,datanode_killed,failure,missed_failure,,2021-10-25 04:51:06+00:00,,5,-1,5,0,0.5463888645172119
-rf/normal6,rf,normal6,normal,false_alert,2021-10-25 05:21:50+00:00,,,9,1,1,4,0.8470854163169861
-svd/nodemanager_killed,svd,nodemanager_killed,failure,early_alert,2021-10-25 06:43:10+00:00,2021-10-25 06:43:40+00:00,30.0,4,2,2,2,0.7161592245101929
-svd/lose_package,svd,lose_package,failure,early_alert,2021-10-25 07:46:50+00:00,2021-10-25 07:49:01+00:00,131.0,14,2,2,12,0.7125012874603271
-svd/net_killed,svd,net_killed,failure,early_alert,2021-10-25 08:06:40+00:00,2021-10-25 08:07:03+00:00,23.0,4,3,3,1,0.7375291585922241
-svd/late_sub,svd,late_sub,failure,missed_failure,,2021-10-25 08:16:36+00:00,,4,-1,4,0,0.5641633868217468
-svd/slow_stress,svd,slow_stress,failure,missed_failure,,2021-10-25 09:26:56+00:00,,4,-1,4,0,0.9611316323280334
+wordcount/master_killed,wordcount,master_killed,failure,early_alert,2021-10-15 05:36:00+00:00,2021-10-15 05:36:45+00:00,45.0,11,8,8,3,0.931787371635437
+wordcount/resourcemanager_suspended,wordcount,resourcemanager_suspended,failure,missed_failure,,2021-10-15 05:38:16+00:00,,7,-1,7,0,0.914192259311676
+sort/datanode_suspended,sort,datanode_suspended,failure,early_alert,2021-10-15 06:14:00+00:00,2021-10-15 06:15:27+00:00,87.0,9,2,2,7,0.8309647440910339
+sort/normal2,sort,normal2,normal,false_alert,2021-10-15 06:15:40+00:00,,,6,1,1,4,0.7604181170463562
+terasort/worker_suspended,terasort,worker_suspended,failure,missed_failure,,2021-10-15 10:32:03+00:00,,14,-1,14,0,0.3236902058124542
+terasort/nodemanager_suspended,terasort,nodemanager_suspended,failure,missed_failure,,2021-10-15 10:36:04+00:00,,16,-1,16,0,0.2801893055438995
+terasort/net_killed,terasort,net_killed,failure,early_alert,2021-10-15 11:25:00+00:00,2021-10-15 11:26:16+00:00,76.0,22,16,16,6,0.9973352551460266
+terasort/cpu_stress,terasort,cpu_stress,failure,early_alert,2021-10-15 11:36:20+00:00,2021-10-15 11:36:58+00:00,38.0,16,14,14,2,0.9948400855064392
+sleep/normal3,sleep,normal3,normal,normal_no_alert,,,,17,-1,17,0,0.3302270770072937
+nweight/nodemanager_killed,nweight,nodemanager_killed,failure,early_alert,2021-10-19 10:54:00+00:00,2021-10-19 10:56:48+00:00,168.0,23,8,8,15,0.9999910593032836
+nweight/2nd_namenode_suspended,nweight,2nd_namenode_suspended,failure,early_alert,2021-10-19 12:22:20+00:00,2021-10-19 12:22:57+00:00,37.0,23,21,21,2,0.9999868869781494
+nweight/2nd_namenode_killed,nweight,2nd_namenode_killed,failure,early_alert,2021-10-19 12:48:20+00:00,2021-10-19 12:49:36+00:00,76.0,23,17,17,6,0.9999662637710572
+nweight/late_sub,nweight,late_sub,failure,early_alert,2021-10-19 14:45:20+00:00,2021-10-19 14:46:55+00:00,95.0,23,15,15,8,0.9998888969421388
+graph_pagerank/nodemanager_suspended,graph_pagerank,nodemanager_suspended,failure,early_alert,2021-10-20 10:58:20+00:00,2021-10-20 10:59:26+00:00,66.0,7,2,2,5,0.8789401054382324
+graph_pagerank/normal3,graph_pagerank,normal3,normal,false_alert,2021-10-20 11:08:20+00:00,,,11,2,2,8,0.8275859355926514
+graph_pagerank/normal7,graph_pagerank,normal7,normal,false_alert,2021-10-20 11:51:10+00:00,,,11,4,4,4,0.9806177020072936
+aggregation/normal2,aggregation,normal2,normal,false_alert,2021-10-20 12:09:10+00:00,,,14,3,3,4,0.7359973788261414
+aggregation/resourcemanager_suspended,aggregation,resourcemanager_suspended,failure,missed_failure,,2021-10-20 13:02:53+00:00,,7,-1,7,0,0.3491306602954864
+scan/normal6,scan,normal6,normal,normal_no_alert,,,,11,-1,11,0,0.1951203048229217
+scan/normal7,scan,normal7,normal,normal_no_alert,,,,13,-1,13,0,0.2608563005924225
+web_pagerank/datanode_killed,web_pagerank,datanode_killed,failure,missed_failure,,2021-10-21 06:11:08+00:00,,2,-1,2,0,0.722985565662384
+web_pagerank/cpu_stress,web_pagerank,cpu_stress,failure,early_alert,2021-10-21 07:58:50+00:00,2021-10-21 08:00:08+00:00,78.0,23,17,17,6,0.9999226331710817
+repartition/normal4,repartition,normal4,normal,false_alert,2021-10-21 09:52:50+00:00,,,20,9,9,11,0.9886381030082704
+repartition/normal6,repartition,normal6,normal,false_alert,2021-10-21 10:27:20+00:00,,,16,7,7,8,0.9991875290870668
+join/net_killed,join,net_killed,failure,missed_failure,,2021-10-22 09:49:21+00:00,,14,-1,14,0,0.2363740801811218
+join/mq_stress,join,mq_stress,failure,early_alert,2021-10-22 10:05:20+00:00,2021-10-22 10:06:21+00:00,61.0,11,6,6,5,0.997795343399048
+als/normal1,als,normal1,normal,false_alert,2021-10-22 10:59:00+00:00,,,11,2,2,8,0.8989972472190857
+als/normal2,als,normal2,normal,false_alert,2021-10-22 11:05:20+00:00,,,7,1,1,4,0.9299861192703248
+als/2nd_namenode_suspended,als,2nd_namenode_suspended,failure,early_alert,2021-10-22 11:13:00+00:00,2021-10-22 11:13:51+00:00,51.0,5,1,1,4,0.9422876834869384
+als/normal4,als,normal4,normal,false_alert,2021-10-22 11:15:50+00:00,,,7,1,1,4,0.891612708568573
+als/net_killed,als,net_killed,failure,early_alert,2021-10-22 11:20:30+00:00,2021-10-22 11:21:04+00:00,34.0,5,3,3,2,0.9905857443809508
+bayes/datanode_suspended,bayes,datanode_suspended,failure,early_alert,2021-10-22 12:33:30+00:00,2021-10-22 12:35:27+00:00,117.0,11,1,1,10,0.9279028177261353
+bayes/datanode_killed,bayes,datanode_killed,failure,early_alert,2021-10-22 12:40:20+00:00,2021-10-22 12:40:49+00:00,29.0,3,2,2,1,0.97369122505188
+bayes/2nd_namenode_suspended,bayes,2nd_namenode_suspended,failure,early_alert,2021-10-22 12:45:00+00:00,2021-10-22 12:45:49+00:00,49.0,5,2,2,3,0.9072734117507936
+bayes/master_killed,bayes,master_killed,failure,early_alert,2021-10-22 13:13:30+00:00,2021-10-22 13:14:08+00:00,38.0,6,4,4,2,0.8211604356765747
+bayes/namenode_suspended,bayes,namenode_suspended,failure,missed_failure,,2021-10-22 13:19:41+00:00,,6,-1,6,0,0.820800244808197
+lda/memory_stress,lda,memory_stress,failure,missed_failure,,2021-10-23 09:25:45+00:00,,10,-1,10,0,0.6345435976982117
+lda/io_stress,lda,io_stress,failure,missed_failure,,2021-10-23 09:28:55+00:00,,4,-1,4,0,0.964702010154724
+rf/normal3,rf,normal3,normal,normal_no_alert,,,,8,-1,8,0,0.6673572063446045
+rf/normal5,rf,normal5,normal,normal_no_alert,,,,9,-1,9,0,0.1909046471118927
+svd/datanode_suspended,svd,datanode_suspended,failure,missed_failure,,2021-10-25 06:16:32+00:00,,10,-1,10,0,0.8563284277915955
+svd/nodemanager_killed,svd,nodemanager_killed,failure,early_alert,2021-10-25 06:43:00+00:00,2021-10-25 06:43:40+00:00,40.0,4,1,1,3,0.5426157116889954
+svd/lose_package,svd,lose_package,failure,early_alert,2021-10-25 07:46:40+00:00,2021-10-25 07:49:01+00:00,141.0,14,1,1,13,0.8439021706581116
+svd/slow_stress,svd,slow_stress,failure,missed_failure,,2021-10-25 09:26:56+00:00,,4,-1,4,0,0.571723997592926
+svd/resourcemanager_suspended,svd,resourcemanager_suspended,failure,missed_failure,,2021-10-25 09:57:54+00:00,,20,-1,20,0,0.4762689471244812
