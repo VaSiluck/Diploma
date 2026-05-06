@@ -1,6 +1,2 @@
 model,failure_runs,normal_runs,failure_run_recall,run_alert_precision,run_alert_f1,false_alert_run_rate,alert_density,median_lead_time_sec,alert_events
-<<<<<<< HEAD
-protocol-fixed-efficient-hades,29,16,0.6896551724137931,0.6666666666666666,0.6779661016949153,0.625,0.33992094861660077,63.5,30
-=======
 protocol-fixed-efficient-hades,31,14,0.6129032258064516,0.6785714285714286,0.6440677966101694,0.6428571428571429,0.3044315992292871,61.0,28
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d

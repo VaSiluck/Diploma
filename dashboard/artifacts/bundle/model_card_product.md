@@ -13,14 +13,14 @@
 
 ## Test metrics выбранного checkpoint
 
-- `horizon_30s`: F1=0.306, Precision=0.245, Recall=0.407, AP=0.280, ROC-AUC=0.765
-- `horizon_60s`: F1=0.531, Precision=0.455, Recall=0.637, AP=0.490, ROC-AUC=0.742
-- `horizon_120s`: F1=0.710, Precision=0.638, Recall=0.801, AP=0.703, ROC-AUC=0.756
-- `horizon_300s`: F1=0.829, Precision=0.713, Recall=0.991, AP=0.835, ROC-AUC=0.768
+- `horizon_30s`: F1=0.392, Precision=0.333, Recall=0.476, AP=0.318, ROC-AUC=0.738
+- `horizon_60s`: F1=0.489, Precision=0.449, Recall=0.537, AP=0.506, ROC-AUC=0.702
+- `horizon_120s`: F1=0.579, Precision=0.670, Recall=0.510, AP=0.706, ROC-AUC=0.687
+- `horizon_300s`: F1=0.682, Precision=0.785, Recall=0.603, AP=0.832, ROC-AUC=0.695
 
 ## Runtime
 
-- Torch checkpoint: `missing_checkpoint_copy_required`
+- Torch checkpoint: `available`
 - ONNX FP32: `reserved_not_exported`
 - ONNX INT8: `reserved_not_quantized`
 

@@ -9,46 +9,6 @@
   },
   "score_distribution": {
     "test_horizon_300s": {
-<<<<<<< HEAD
-      "count": 506,
-      "min": 0.0006869782810099,
-      "p50": 0.5696695148944855,
-      "p90": 0.9986587166786194,
-      "p95": 0.9997970461845397,
-      "max": 0.9999959468841552
-    },
-    "test_horizon_120s": {
-      "count": 506,
-      "min": 4.013080251752399e-05,
-      "p50": 0.38132368028163904,
-      "p90": 0.9848569333553314,
-      "p95": 0.9981016516685486,
-      "max": 0.9999710321426392
-    },
-    "test_horizon_60s": {
-      "count": 506,
-      "min": 7.026866114756558e-06,
-      "p50": 0.22451801598072052,
-      "p90": 0.9545506238937378,
-      "p95": 0.9860817492008209,
-      "max": 0.999055802822113
-    },
-    "test_horizon_30s": {
-      "count": 506,
-      "min": 2.110442983394023e-05,
-      "p50": 0.16597934812307355,
-      "p90": 0.94777712225914,
-      "p95": 0.983296811580658,
-      "max": 0.9980411529541016
-    },
-    "validation_horizon_300s": {
-      "count": 531,
-      "min": 0.0001265556493308,
-      "p50": 0.5061461329460144,
-      "p90": 0.994902729988098,
-      "p95": 0.9997144639492036,
-      "max": 0.9999945163726808
-=======
       "count": 519,
       "min": 1.2153657280578043e-06,
       "p50": 0.6236194968223572,
@@ -87,44 +47,26 @@
       "p90": 0.9978577494621277,
       "p95": 0.9998334139585495,
       "max": 0.9999985694885254
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     }
   },
   "alert_layer": {
     "watch_target": "horizon_300s",
-<<<<<<< HEAD
-    "watch_threshold": 0.013862426020205,
-    "alert_confirmation_target": "horizon_60s",
-    "alert_confirmation_threshold": 0.5814547836780549,
-=======
     "watch_threshold": 0.5783348608016968,
     "alert_confirmation_target": "horizon_60s",
     "alert_confirmation_threshold": 0.694148461818695,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     "min_consecutive_windows": 2,
     "cooldown_windows": 3
   },
   "alert_state_counts": {
-<<<<<<< HEAD
-    "watch": 281,
-    "alert": 172,
-    "normal": 53
-=======
     "normal": 219,
     "alert": 158,
     "watch": 142
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
   },
   "runtime_slots": {
     "torch_state": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.pt",
-<<<<<<< HEAD
-      "source_expected": "hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\models\\stratified_by_workload\\modern_metric_seed43.pt",
-      "status": "missing_checkpoint_copy_required"
-=======
       "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "status": "available"
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     },
     "onnx_fp32": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.onnx",
@@ -137,17 +79,10 @@
     }
   },
   "run_event_counts": {
-<<<<<<< HEAD
-    "early_alert": 20,
-    "false_alert": 10,
-    "missed_failure": 9,
-    "normal_no_alert": 6
-=======
     "early_alert": 19,
     "missed_failure": 12,
     "false_alert": 9,
     "normal_no_alert": 5
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
   },
   "warnings": [
     "ONNX/INT8 slots are reserved; selected full checkpoint must be copied before true online inference.",

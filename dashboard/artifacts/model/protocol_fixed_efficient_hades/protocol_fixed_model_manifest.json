@@ -149,7 +149,7 @@
       "missed_anomalies": 122,
       "threshold": 0.5,
       "prevalence": 0.6165703275529865,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_y_warning",
       "threshold_policy": "validation_best_f1"
@@ -165,7 +165,7 @@
       "missed_anomalies": 34,
       "threshold": 0.8499230140447617,
       "prevalence": 0.1213872832369942,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-state-score",
       "score_name": "score_y_risk",
       "threshold_policy": "validation_best_f1"
@@ -181,7 +181,7 @@
       "missed_anomalies": 129,
       "threshold": 0.5257272231578827,
       "prevalence": 0.6165703275529865,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_y_anomaly",
       "threshold_policy": "validation_best_f1"
@@ -197,7 +197,7 @@
       "missed_anomalies": 33,
       "threshold": 0.8496551346778869,
       "prevalence": 0.1213872832369942,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_horizon_30s",
       "threshold_policy": "validation_best_f1"
@@ -213,7 +213,7 @@
       "missed_anomalies": 68,
       "threshold": 0.694148461818695,
       "prevalence": 0.2832369942196532,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_horizon_60s",
       "threshold_policy": "validation_best_f1"
@@ -229,7 +229,7 @@
       "missed_anomalies": 127,
       "threshold": 0.685357506275177,
       "prevalence": 0.4990366088631984,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_horizon_120s",
       "threshold_policy": "validation_best_f1"
@@ -245,7 +245,7 @@
       "missed_anomalies": 142,
       "threshold": 0.5783348608016968,
       "prevalence": 0.6897880539499036,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_horizon_300s",
       "threshold_policy": "validation_best_f1"

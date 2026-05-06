@@ -1,13 +1,8 @@
 {
   "model_name": "Protocol-Fixed Efficient HADES",
   "model_family": "protocol_fixed_efficient_hades",
-<<<<<<< HEAD
-  "run_id": "protocol_fixed_cuda_h60",
-  "source_dir": "hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60",
-=======
   "run_id": "final_protocol_fixed_hades",
   "source_dir": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades",
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
   "contract_path": "dashboard\\artifacts\\contract\\strict_intensity_contract.csv.gz",
   "contract_mode": "strict_intensity_gap10_protocol_fixed",
   "split_protocol": "stratified_by_workload",
@@ -22,15 +17,9 @@
   "proxy_fallback_windows": 0,
   "alert_layer": {
     "watch_target": "horizon_300s",
-<<<<<<< HEAD
-    "watch_threshold": 0.013862426020205,
-    "alert_confirmation_target": "horizon_60s",
-    "alert_confirmation_threshold": 0.5814547836780549,
-=======
     "watch_threshold": 0.5783348608016968,
     "alert_confirmation_target": "horizon_60s",
     "alert_confirmation_threshold": 0.694148461818695,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     "min_consecutive_windows": 2,
     "cooldown_windows": 3
   },
@@ -53,46 +42,6 @@
     },
     "score_distribution": {
       "test_horizon_300s": {
-<<<<<<< HEAD
-        "count": 506,
-        "min": 0.0006869782810099,
-        "p50": 0.5696695148944855,
-        "p90": 0.9986587166786194,
-        "p95": 0.9997970461845397,
-        "max": 0.9999959468841552
-      },
-      "test_horizon_120s": {
-        "count": 506,
-        "min": 4.013080251752399e-05,
-        "p50": 0.38132368028163904,
-        "p90": 0.9848569333553314,
-        "p95": 0.9981016516685486,
-        "max": 0.9999710321426392
-      },
-      "test_horizon_60s": {
-        "count": 506,
-        "min": 7.026866114756558e-06,
-        "p50": 0.22451801598072052,
-        "p90": 0.9545506238937378,
-        "p95": 0.9860817492008209,
-        "max": 0.999055802822113
-      },
-      "test_horizon_30s": {
-        "count": 506,
-        "min": 2.110442983394023e-05,
-        "p50": 0.16597934812307355,
-        "p90": 0.94777712225914,
-        "p95": 0.983296811580658,
-        "max": 0.9980411529541016
-      },
-      "validation_horizon_300s": {
-        "count": 531,
-        "min": 0.0001265556493308,
-        "p50": 0.5061461329460144,
-        "p90": 0.994902729988098,
-        "p95": 0.9997144639492036,
-        "max": 0.9999945163726808
-=======
         "count": 519,
         "min": 1.2153657280578043e-06,
         "p50": 0.6236194968223572,
@@ -131,44 +80,26 @@
         "p90": 0.9978577494621277,
         "p95": 0.9998334139585495,
         "max": 0.9999985694885254
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
       }
     },
     "alert_layer": {
       "watch_target": "horizon_300s",
-<<<<<<< HEAD
-      "watch_threshold": 0.013862426020205,
-      "alert_confirmation_target": "horizon_60s",
-      "alert_confirmation_threshold": 0.5814547836780549,
-=======
       "watch_threshold": 0.5783348608016968,
       "alert_confirmation_target": "horizon_60s",
       "alert_confirmation_threshold": 0.694148461818695,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
       "min_consecutive_windows": 2,
       "cooldown_windows": 3
     },
     "alert_state_counts": {
-<<<<<<< HEAD
-      "watch": 281,
-      "alert": 172,
-      "normal": 53
-=======
       "normal": 219,
       "alert": 158,
       "watch": 142
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     },
     "runtime_slots": {
       "torch_state": {
         "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.pt",
-<<<<<<< HEAD
-        "source_expected": "hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\models\\stratified_by_workload\\modern_metric_seed43.pt",
-        "status": "missing_checkpoint_copy_required"
-=======
         "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
         "status": "available"
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
       },
       "onnx_fp32": {
         "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.onnx",
@@ -181,17 +112,10 @@
       }
     },
     "run_event_counts": {
-<<<<<<< HEAD
-      "early_alert": 20,
-      "false_alert": 10,
-      "missed_failure": 9,
-      "normal_no_alert": 6
-=======
       "early_alert": 19,
       "missed_failure": 12,
       "false_alert": 9,
       "normal_no_alert": 5
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     },
     "warnings": [
       "ONNX/INT8 slots are reserved; selected full checkpoint must be copied before true online inference.",
@@ -202,17 +126,6 @@
   "run_level_metrics": [
     {
       "model": "protocol-fixed-efficient-hades",
-<<<<<<< HEAD
-      "failure_runs": 29,
-      "normal_runs": 16,
-      "failure_run_recall": 0.6896551724137931,
-      "run_alert_precision": 0.6666666666666666,
-      "run_alert_f1": 0.6779661016949153,
-      "false_alert_run_rate": 0.625,
-      "alert_density": 0.33992094861660077,
-      "median_lead_time_sec": 63.5,
-      "alert_events": 30
-=======
       "failure_runs": 31,
       "normal_runs": 14,
       "failure_run_recall": 0.6129032258064516,
@@ -222,24 +135,11 @@
       "alert_density": 0.3044315992292871,
       "median_lead_time_sec": 61.0,
       "alert_events": 28
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     }
   ],
   "strict_research_metrics": [
     {
       "target": "y_warning",
-<<<<<<< HEAD
-      "average_precision": 0.7882942786454012,
-      "roc_auc": 0.7683326962283384,
-      "precision": 0.6847826086956522,
-      "recall": 0.875,
-      "f1": 0.7682926829268293,
-      "false_positives": 116,
-      "missed_anomalies": 36,
-      "threshold": 0.064165898412466,
-      "prevalence": 0.5691699604743083,
-      "torch_latency_ms_per_sample": 0.0250539453190867,
-=======
       "average_precision": 0.7772195606326449,
       "roc_auc": 0.6793027638190955,
       "precision": 0.7333333333333333,
@@ -249,26 +149,13 @@
       "missed_anomalies": 122,
       "threshold": 0.5,
       "prevalence": 0.6165703275529865,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_y_warning",
       "threshold_policy": "validation_best_f1"
     },
     {
       "target": "y_risk",
-<<<<<<< HEAD
-      "average_precision": 0.2804687766452756,
-      "roc_auc": 0.7630531225116597,
-      "precision": 0.25,
-      "recall": 0.4067796610169492,
-      "f1": 0.3096774193548387,
-      "false_positives": 72,
-      "missed_anomalies": 35,
-      "threshold": 0.8055780589580536,
-      "prevalence": 0.116600790513834,
-      "torch_latency_ms_per_sample": 0.0250539453190867,
-=======
       "average_precision": 0.3098904440609593,
       "roc_auc": 0.7355193539404066,
       "precision": 0.3295454545454545,
@@ -278,26 +165,13 @@
       "missed_anomalies": 34,
       "threshold": 0.8499230140447617,
       "prevalence": 0.1213872832369942,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-state-score",
       "score_name": "score_y_risk",
       "threshold_policy": "validation_best_f1"
     },
     {
       "target": "y_anomaly",
-<<<<<<< HEAD
-      "average_precision": 0.7822831830705106,
-      "roc_auc": 0.7628376656472987,
-      "precision": 0.67828418230563,
-      "recall": 0.8784722222222222,
-      "f1": 0.7655068078668684,
-      "false_positives": 120,
-      "missed_anomalies": 35,
-      "threshold": 0.0537692271173,
-      "prevalence": 0.5691699604743083,
-      "torch_latency_ms_per_sample": 0.0250539453190867,
-=======
       "average_precision": 0.7771490529603977,
       "roc_auc": 0.6810144472361809,
       "precision": 0.7346153846153847,
@@ -307,26 +181,13 @@
       "missed_anomalies": 129,
       "threshold": 0.5257272231578827,
       "prevalence": 0.6165703275529865,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_y_anomaly",
       "threshold_policy": "validation_best_f1"
     },
     {
       "target": "horizon_30s",
-<<<<<<< HEAD
-      "average_precision": 0.27956312555771,
-      "roc_auc": 0.7645698252000152,
-      "precision": 0.2448979591836734,
-      "recall": 0.4067796610169492,
-      "f1": 0.3057324840764331,
-      "false_positives": 74,
-      "missed_anomalies": 35,
-      "threshold": 0.8121325790882111,
-      "prevalence": 0.116600790513834,
-      "torch_latency_ms_per_sample": 0.0250539453190867,
-=======
       "average_precision": 0.3181847425696411,
       "roc_auc": 0.7378863826232247,
       "precision": 0.3333333333333333,
@@ -336,26 +197,13 @@
       "missed_anomalies": 33,
       "threshold": 0.8496551346778869,
       "prevalence": 0.1213872832369942,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_horizon_30s",
       "threshold_policy": "validation_best_f1"
     },
     {
       "target": "horizon_60s",
-<<<<<<< HEAD
-      "average_precision": 0.4897411500144948,
-      "roc_auc": 0.7416991115104322,
-      "precision": 0.455026455026455,
-      "recall": 0.6370370370370371,
-      "f1": 0.5308641975308642,
-      "false_positives": 103,
-      "missed_anomalies": 49,
-      "threshold": 0.5814547836780549,
-      "prevalence": 0.266798418972332,
-      "torch_latency_ms_per_sample": 0.0250539453190867,
-=======
       "average_precision": 0.5061038818589934,
       "roc_auc": 0.7019603540340867,
       "precision": 0.4488636363636363,
@@ -365,26 +213,13 @@
       "missed_anomalies": 68,
       "threshold": 0.694148461818695,
       "prevalence": 0.2832369942196532,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_horizon_60s",
       "threshold_policy": "validation_best_f1"
     },
     {
       "target": "horizon_120s",
-<<<<<<< HEAD
-      "average_precision": 0.7031640608491805,
-      "roc_auc": 0.7562927981109799,
-      "precision": 0.6379310344827587,
-      "recall": 0.8008658008658008,
-      "f1": 0.710172744721689,
-      "false_positives": 105,
-      "missed_anomalies": 46,
-      "threshold": 0.2656357884407043,
-      "prevalence": 0.4565217391304347,
-      "torch_latency_ms_per_sample": 0.0250539453190867,
-=======
       "average_precision": 0.7064258602892136,
       "roc_auc": 0.6867389367389367,
       "precision": 0.6700507614213198,
@@ -394,26 +229,13 @@
       "missed_anomalies": 127,
       "threshold": 0.685357506275177,
       "prevalence": 0.4990366088631984,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_horizon_120s",
       "threshold_policy": "validation_best_f1"
     },
     {
       "target": "horizon_300s",
-<<<<<<< HEAD
-      "average_precision": 0.8354118055791895,
-      "roc_auc": 0.7678232261565595,
-      "precision": 0.7133333333333334,
-      "recall": 0.9907407407407408,
-      "f1": 0.8294573643410853,
-      "false_positives": 129,
-      "missed_anomalies": 3,
-      "threshold": 0.013862426020205,
-      "prevalence": 0.6403162055335968,
-      "torch_latency_ms_per_sample": 0.0250539453190867,
-=======
       "average_precision": 0.8318408982334228,
       "roc_auc": 0.6945764946736529,
       "precision": 0.7854545454545454,
@@ -423,79 +245,12 @@
       "missed_anomalies": 142,
       "threshold": 0.5783348608016968,
       "prevalence": 0.6897880539499036,
-      "torch_latency_ms_per_sample": 0.0259859765719738,
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
+      "torch_latency_ms_per_sample": 0.0247022265284613,
       "baseline": "final-multimodal-strict-intensity-fusion",
       "score_name": "score_horizon_300s",
       "threshold_policy": "validation_best_f1"
     }
   ],
-<<<<<<< HEAD
-  "baseline_diagnostics": [
-    {
-      "target": "y_warning",
-      "central_average_precision": 0.7882942786454012,
-      "central_roc_auc": 0.7683326962283384,
-      "central_f1": 0.7682926829268293,
-      "central_recall": 0.875,
-      "central_precision": 0.6847826086956522,
-      "random_reference_ap": 0.5691699604743083,
-      "best_baseline": "current split / same architecture",
-      "best_baseline_average_precision": 0.3549126023045473,
-      "best_baseline_roc_auc": 0.5715395399946951,
-      "best_baseline_f1": 0.4773109243697479,
-      "best_baseline_recall": 0.6228070175438597,
-      "delta_vs_best_baseline_ap": 0.43338167634085395,
-      "verdict": "лучше baseline"
-    },
-    {
-      "target": "y_risk",
-      "central_average_precision": 0.2804687766452756,
-      "central_roc_auc": 0.7630531225116597,
-      "central_f1": 0.3096774193548387,
-      "central_recall": 0.4067796610169492,
-      "central_precision": 0.25,
-      "random_reference_ap": 0.116600790513834,
-      "best_baseline": "current split / same architecture",
-      "best_baseline_average_precision": 0.1107176973149237,
-      "best_baseline_roc_auc": 0.4892111083804374,
-      "best_baseline_f1": 0.1296296296296296,
-      "best_baseline_recall": 0.1076923076923077,
-      "delta_vs_best_baseline_ap": 0.16975107933035188,
-      "verdict": "лучше baseline"
-    },
-    {
-      "target": "horizon_120s",
-      "central_average_precision": 0.7031640608491805,
-      "central_roc_auc": 0.7562927981109799,
-      "central_f1": 0.710172744721689,
-      "central_recall": 0.8008658008658008,
-      "central_precision": 0.6379310344827587,
-      "random_reference_ap": 0.4565217391304347,
-      "best_baseline": "current split / same architecture",
-      "best_baseline_average_precision": 0.3158227851885482,
-      "best_baseline_roc_auc": 0.5427759163366839,
-      "best_baseline_f1": 0.2286995515695067,
-      "best_baseline_recall": 0.2537313432835821,
-      "delta_vs_best_baseline_ap": 0.38734127566063226,
-      "verdict": "лучше baseline"
-    },
-    {
-      "target": "horizon_300s",
-      "central_average_precision": 0.8354118055791895,
-      "central_roc_auc": 0.7678232261565595,
-      "central_f1": 0.8294573643410853,
-      "central_recall": 0.9907407407407408,
-      "central_precision": 0.7133333333333334,
-      "random_reference_ap": 0.6403162055335968,
-      "best_baseline": "current split / same architecture",
-      "best_baseline_average_precision": 0.350075917923082,
-      "best_baseline_roc_auc": 0.5645140174680656,
-      "best_baseline_f1": 0.5512465373961218,
-      "best_baseline_recall": 0.8504273504273504,
-      "delta_vs_best_baseline_ap": 0.48533588765610747,
-      "verdict": "лучше baseline"
-=======
   "protocol_baseline_metrics": [
     {
       "target": "y_warning",
@@ -1122,19 +877,13 @@
       "best_baseline_recall": NaN,
       "delta_vs_best_baseline_ap": NaN,
       "verdict": "паритет"
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     }
   ],
   "runtime": {
     "torch_state": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.pt",
-<<<<<<< HEAD
-      "source_expected": "hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\models\\stratified_by_workload\\modern_metric_seed43.pt",
-      "status": "missing_checkpoint_copy_required"
-=======
       "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "status": "available"
->>>>>>> fd067ed41863ccaebd98e52e10e4ed488927767d
     },
     "onnx_fp32": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.onnx",
