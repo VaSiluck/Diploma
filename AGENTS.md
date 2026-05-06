@@ -1,155 +1,207 @@
 # AGENTS.md
 
-## Research Overview
+## Назначение проекта
 
-This repository contains a **ВКР (thesis) research pipeline for AIOps risk assessment** on multimodal telemetry.
+Финальный контур ВКР: воспроизводимая AIOps-система раннего предупреждения на логах и KPI.
 
-The core experimental chain is:
+- источник данных: только `raw_data/`;
+- контракт: `dashboard.pipeline.build_contract`;
+- baseline: `dashboard.training.baselines`;
+- финальная модель: `dashboard.training.final_model`;
+- демонстрация: `dashboard/app.py`.
 
-1. `01_eda_raw_data.ipynb` — reproducible EDA of `raw_data/` (dataset anatomy, modality coverage, temporal resolution, provenance rules).
-2. `02_multirate_baseline_raw_data.ipynb` — construction of a strict multi-rate data contract (`run_id = workload/scenario`), anti-leakage split, and smoke baseline models.
-3. `03_central_fusion_model_raw_data.ipynb` — central fusion multimodal model (logs + KPI + modality masks) using the contract from notebook 02.
+Ключевая идея: это не бинарный оракул сбоя, а лабораторная система раннего предупреждения с честным разделением:
 
-Scientific emphasis is methodological: **transparent assumptions, local conclusions, and reproducibility**, not engineering scale.
+```text
+score модели != состояние alert-layer != факт incident
+```
 
----
+## Финальный маршрут
 
-## Data Pipeline
+```powershell
+python -m dashboard.pipeline.build_contract --raw-data raw_data
 
-### 1) Raw data intake
-- Source: `raw_data/<workload>/...`
-- Modalities:
-  - logs (`mapred_logs/<scenario>.log`, `parsed_log/*`)
-  - KPI (`kpis/<scenario>/instruments/<host>/<metric>`)
+# 02_baseline_pipeline.ipynb обучает baseline
+# 03_fused_model.ipynb обучает финальную Efficient HADES модель и экспортирует bundle
 
-### 2) EDA and policy definition
-- Notebook: `01_eda_raw_data.ipynb`
-- Role: defines inclusion/provenance policy and windowing rationale for downstream steps.
-- Path configured for artifacts: `outputs/raw_eda/` (currently not present in repository snapshot).
+streamlit run dashboard/app.py
+```
 
-### 3) Baseline contract assembly (main handoff)
-- Notebook: `02_multirate_baseline_raw_data.ipynb`
-- Inputs: `raw_data/`
-- Outputs (actual, present):
-  - `outputs/raw_multirate/aligned_multirate_windows.csv`
-  - `outputs/raw_multirate/baseline_summary_metrics.json`
-- Contract summary (from JSON): `rows=10237`, `runs=440`, `workloads=16`, micro-window `10s`, macro-window `60s`.
+Если запускать обучение без notebook:
 
-### 4) Central fusion modeling
-- Notebook: `03_central_fusion_model_raw_data.ipynb`
-- Inputs:
-  - `outputs/raw_multirate/aligned_multirate_windows.csv`
-  - `outputs/raw_multirate/baseline_summary_metrics.json`
-- Current outputs (debug/dry-run, present):
-  - `outputs/raw_central_model/feature_manifest.json`
-  - `outputs/raw_central_model/preprocessing_manifest.json`
-  - `outputs/raw_central_model/model_config.json`
-  - `outputs/raw_central_model/dry_run_report.json`
-  - `outputs/raw_central_model/cache/log_embeddings_google__embeddinggemma-300m.npz`
-- Full training artifacts are generated only in `RUN_MODE="train"` and are currently absent.
+```powershell
+python -m dashboard.training.baselines `
+  --contract-path dashboard/artifacts/contract/strict_intensity_contract.csv.gz `
+  --output-dir dashboard/artifacts/reports/protocol_fixed_baselines `
+  --split-protocol stratified_by_workload `
+  --targets default `
+  --seed 43 `
+  --validation-seed 43 `
+  --fp-budget 0.10
 
-### 5) Dashboard layer
-- App: `dashboard/mm_dashboard.py`
-- Current expected inputs:
-  - primarily `outputs/lcman/*` and `outputs/final_demo/*` (legacy naming)
-  - optional raw KPI overlays from `kpi_csv/<app>/<scenario>/*-intersect.csv`
-- Important: this dashboard contract is **not yet aligned** with current `raw_multirate/raw_central_model` outputs.
+python -m dashboard.training.final_model `
+  --run-id final_protocol_fixed_hades `
+  --device cuda `
+  --run-root dashboard/artifacts/model_runs/protocol_fixed_hades `
+  --contract-path dashboard/artifacts/contract/strict_intensity_contract.csv.gz `
+  --model-out-dir dashboard/artifacts/model/protocol_fixed_efficient_hades `
+  --bundle-out-dir dashboard/artifacts/bundle `
+  --split-protocol stratified_by_workload `
+  --variant modern_metric `
+  --seed 43 `
+  --monitor-target horizon_60s `
+  --alert-target horizon_60s `
+  --normalization workload_norm `
+  --metric-feature-mode raw_plus_deviation `
+  --epochs 30 `
+  --batch-size 128 `
+  --quantization dynamic
 
----
+python -m dashboard.export.bundle --mode protocol_fixed
+```
 
-## Tech Stack
+## Активная структура
 
-### Data science / modeling
-- `numpy`, `pandas`
-- `matplotlib`, `seaborn`
-- `scikit-learn` (GroupShuffleSplit, LogisticRegression, preprocessing/pipelines, metrics)
-- `torch` (central fusion model)
-- optional text embedding stack: `huggingface_hub`, `sentence_transformers`
-- utilities: `joblib`, `tqdm`
+Финальные notebooks:
 
-### Dashboard
-- `streamlit`
-- `plotly` (`plotly.graph_objects`)
+1. `01_eda.ipynb` - данные, strict contract, workload/domain shift, targets.
+2. `02_baseline_pipeline.ipynb` - protocol-fixed baseline и контрольные метрики.
+3. `03_fused_model.ipynb` - финальная Efficient HADES модель, обучение, сравнение, export.
 
----
+Активные модули `dashboard/` сгруппированы по слоям:
 
-## Academic Coding Standards
+- `pipeline/build_contract.py` - сборка strict contract из `raw_data`;
+- `training/baselines.py` - protocol-fixed baseline;
+- `training/final_model.py` - обучение и promote финальной модели;
+- `modeling/protocol_fixed_hades.py` - Efficient HADES training core;
+- `modeling/hades_blocks.py` - encoder/runtime blocks, ONNX/INT8 helpers;
+- `export/bundle.py` - единый dashboard bundle exporter;
+- `runtime/contract.py`, `runtime/inference.py`, `runtime/view_model.py` - runtime-модель данных;
+- `ui/components.py` - компоненты интерфейса;
+- `app.py` - Streamlit entrypoint.
 
-### 1) Notebook cell organization (mandatory)
-Each major section must follow the pattern:
-1. **Markdown goal cell**: research question and assumptions.
-2. **Code cell(s)**: deterministic transformation/experiment.
-3. **Markdown interpretation cell**: local conclusion (`Локальный вывод`) and implication for next step.
+Старые hypothesis/smoke/legacy файлы хранятся в `.research_archive/`.
 
-Required conventions:
-- No hidden state between sections.
-- One initialization cell with constants/paths/seeds.
-- Artifact-writing cells must explicitly list written files.
-- Any fallback logic must be documented in markdown and manifest JSON.
+## Данные и артефакты
 
-### 2) Russian labels for figures/tables (mandatory)
-- Titles, axis labels, legends, captions: in Russian.
-- Use consistent terminology:
-  - `normal` → `Норма`
-  - `warning` → `Предупреждение`
-  - `risk` → `Риск`
-- Every plot must include units where applicable (`сек`, `%`, `кол-во`, etc.).
-- Every plot must be followed by short interpretation text:
-  - `Что показано`
-  - `Что наблюдается`
-  - `Локальный вывод`
+Contract:
 
-### 3) Random state and reproducibility policy (mandatory)
-Use one global seed and propagate it everywhere:
-- `SEED = 42`
-- `random.seed(SEED)`
-- `np.random.seed(SEED)`
-- `torch.manual_seed(SEED)` (+ CUDA seeds if used)
-- all sklearn components with stochasticity must set `random_state=SEED` (or deterministic derivative `SEED + k` with documented rule)
+- `dashboard/artifacts/contract/strict_intensity_contract.csv.gz`
+- `dashboard/artifacts/contract/strict_contract_summary.csv`
 
-Additionally:
-- Save `run_mode`, seed, and split strategy in manifest/JSON.
-- Prefer group-aware split for leakage control.
-- Execute notebooks top-to-bottom in clean kernel before reporting metrics.
+Baseline:
 
----
+- `dashboard/artifacts/reports/protocol_fixed_baselines/baseline_protocol_metrics.csv`
+- `dashboard/artifacts/reports/protocol_fixed_baselines/baseline_protocol_predictions.csv.gz`
+- `dashboard/artifacts/reports/protocol_fixed_baselines/baseline_protocol_workload_metrics.csv`
+- `dashboard/artifacts/reports/protocol_fixed_baselines/baseline_protocol_manifest.json`
 
-## Dashboard Specs
+Финальная модель:
 
-### Purpose
-The dashboard is a **research demonstration interface** for replaying risk dynamics and explaining multimodal fusion decisions (logs + KPI), not an online production service.
+- `dashboard/artifacts/model_runs/protocol_fixed_hades/final_protocol_fixed_hades/`
+- promoted artifacts: `dashboard/artifacts/model/protocol_fixed_efficient_hades/`
 
-### Main components
-1. **Scenario replay controls** (case selector, play/pause, step slider).
-2. **Risk-over-time panel** with state/risk trajectory.
-3. **Log evidence panel** (patterns, excerpts, heuristic drivers).
-4. **KPI evidence panel** (CPU/Memory/Disk/Network compact cards + detailed telemetry views).
-5. **Fusion summary panel** (log-vs-KPI contribution, fallback visibility).
-6. **Baseline comparison panel** (LCMAN-lite vs baseline score behavior).
-7. **About/model section** (data contract table, runtime metadata, metric summaries, model card).
+Dashboard bundle:
 
-### Contract behavior
-- Enforces artifact checks (`DataContractError`) for required inputs.
-- Builds/uses timeline contract with `run_id` + `window_ts`.
-- Supports degraded mode when KPI is missing (log-driven fallback).
+- `dashboard/artifacts/bundle/replay_bundle.csv.gz`
+- `dashboard/artifacts/bundle/dashboard_replay_store.csv.gz`
+- `dashboard/artifacts/bundle/dashboard_model_report.json`
+- `dashboard/artifacts/bundle/alert_events.csv`
+- `dashboard/artifacts/bundle/baseline_comparison.csv`
+- `dashboard/artifacts/bundle/metrics_summary.csv`
+- `dashboard/artifacts/bundle/model_card_product.md`
+- `dashboard/artifacts/bundle/bundle_quality_report.json`
 
----
+## Победная постановка
 
-## Current Progress
+Основная финальная конфигурация:
 
-### Finished
-- `01_eda_raw_data.ipynb`: completed EDA structure and transfer policy to notebook 02.
-- `02_multirate_baseline_raw_data.ipynb`: strict baseline contract and summary artifacts generated.
-- `03_central_fusion_model_raw_data.ipynb`: preprocessing + one-batch dry-run validation completed; manifests saved.
-- `dashboard/mm_dashboard.py`: implemented replay UI and evidence/fusion panels with contract validation.
+- architecture: Protocol-Fixed Efficient HADES;
+- split: `stratified_by_workload`;
+- normalization: `workload_norm`;
+- metric features: `raw_plus_deviation`;
+- target design: multi-head;
+- обязательные targets:
+  - `y_warning`;
+  - `y_anomaly`;
+  - `y_risk`;
+  - `horizon_30s`;
+  - `horizon_60s`;
+  - `horizon_120s`;
+  - `horizon_300s`.
 
-### Missing / pending
-1. **Full training run for notebook 03** (`RUN_MODE="train"`) and associated final artifacts (`central_model.pt`, training history, metrics tables, inference store, etc.).
-2. **Dashboard data alignment**: current dashboard expects `outputs/lcman`/`outputs/final_demo`, while active pipeline writes to `outputs/raw_multirate` and `outputs/raw_central_model`.
-3. **KPI dashboard source alignment**: `kpi_csv/` paths expected by dashboard are not present in current repository snapshot.
-4. **Environment lock/repro bundle**: no `requirements.txt`/`pyproject.toml`/env lock file currently present.
-5. **Clean-run publication protocol**: final thesis-ready run should include deterministic rerun evidence and synchronized notebook outputs.
+Интерпретация горизонтов:
 
----
+- `horizon_300s` - лучший демонстрационный early-warning горизонт;
+- `horizon_120s` - основной рабочий early-warning горизонт;
+- `horizon_60s` - более ранний, но шумный alert-канал;
+- `horizon_30s` / `y_risk` - отдельная short-risk задача.
 
-This project should remain notebook-first: concise code, explicit reasoning, reproducible artifacts, and interpretable local conclusions suitable for academic review without reading implementation details line-by-line.
+## Правила notebooks
+
+Ноутбуки `01/02/03` должны читаться как цельная исследовательская линия, а не как набор служебных ячеек. В тексте нужно показывать ход мысли автора: что проверяется, почему это важно для AIOps, что стало видно на данных и какое решение после этого переносится в pipeline.
+
+Не использовать видимый шаблон вроде `Цель раздела -> код -> график -> локальный вывод` как повторяющуюся разметку. Эта логика остается внутренней, но на странице должна выглядеть как нормальное рассуждение студента, который последовательно строит работу.
+
+Требования:
+
+- русские подписи графиков и таблиц;
+- единые термины: `Норма`, `Предупреждение`, `Риск`;
+- тяжелая логика живет в `dashboard/*.py`, notebooks запускают, объясняют и интерпретируют;
+- `02` обучает baseline и проверяет работоспособность выбранного pipeline;
+- `03` обучает финальную модель, сравнивает ее с baseline и экспортирует bundle.
+
+### Стандарт оформления 01/02/03
+
+Правила графиков:
+
+- один практический вопрос -> один график;
+- график должен помогать принять решение по данным, pipeline, модели или dashboard;
+- один и тот же смысл не дублировать в другом разделе;
+- подписи, легенды и оси на русском, кроме общепринятых метрик (`F1`, `AP`, `ROC-AUC`);
+- графики должны идти по логике рассказа: данные -> target -> split/preprocessing -> baseline -> финальная модель -> эксплуатационный вывод.
+
+Правила текста:
+
+- писать связными абзацами, без карточного шаблона `что увидели / что приняли / что поменяли`;
+- объяснять не только результат, но и почему он важен для следующего шага;
+- в `01_eda.ipynb` не описывать будущие решения как уже принятые: EDA формулирует наблюдения и вопросы для проверки в `02`, а не оправдывает заранее выбранный pipeline;
+- не использовать формулировки вида "исправили прошлую версию";
+- избегать канцелярита, пустых выводов и фраз, которые можно поставить под любой график;
+- после важных чисел или графиков обязательно писать, что это значит для раннего предупреждения, FP/FN, split, preprocessing или выбора модели.
+
+## Dashboard
+
+`dashboard/app.py` работает по `dashboard/artifacts/bundle/`.
+
+Семантика:
+
+- `model_score_raw` / `alert_score` - score модели, не вероятность сбоя;
+- `model_score_rank` - диагностический ранг;
+- `risk_score_raw` - отдельный short-risk канал;
+- `alert_state` - решение alert-layer;
+- `incident_marker` - факт события, не предсказание.
+
+UI-компоненты не менять без отдельной причины. Разрешены только изменения, которые подключают финальный bundle или исправляют некорректные команды запуска.
+
+## ONNX/INT8
+
+ONNX/INT8 - runtime-опция для слабого CPU-only железа. Она не является основной метрикой качества.
+
+В export path зарезервированы:
+
+- `model.pt`;
+- `model.onnx`;
+- `model.int8.onnx`.
+
+Если INT8 отсутствует, dashboard продолжает работать от exported replay bundle.
+
+## Критерий готовности
+
+Система готова к показу, если:
+
+1. `01 -> 02 -> 03` выполняются через `Run All`;
+2. `dashboard/artifacts/bundle/*` формируется без ручных правок;
+3. Streamlit работает в `model_scoring`;
+4. в replay видны успехи и ошибки alert-layer;
+5. ограничения модели явно описаны в `03_fused_model.ipynb` и `model_card_product.md`.

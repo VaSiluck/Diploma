@@ -1,23 +1,31 @@
 # Финальная модель dashboard
 
-**Финальная модель:** мультимодальная strict-intensity fusion.
+**Модель:** Protocol-Fixed Efficient HADES.
 
-Модель использует логи, KPI и маски доступности модальностей. Основной score для дашборда — `model_score_raw` на основе `warning_intensity_score`; диагностический strict risk-channel — `risk_score_raw` / `state_score`.
+Архитектурный путь сохраняет HADES-like смысл: log sequence modeling, metric time-series segment modeling, cross-modal fusion и multi-head early-warning targets.
 
-## Alert-layer
+## Основные каналы
 
-- Порог наблюдения: `0.3879`
-- Порог тревоги: `0.6156`
-- Подтверждение тревоги: `2` окна подряд
+- `model_score_raw` = `horizon_300s`: главный демонстрационный early-warning score.
+- `model_score_120s`: основной рабочий early-warning канал.
+- `model_score_60s`: агрессивный ранний канал, ожидаемо шумнее.
+- `risk_score_30s`: отдельный short-horizon risk канал.
 
-## Run-level replay metrics
+## Test metrics выбранного checkpoint
 
-- Failure-run recall: `0.100`
-- Precision по run-alert: `0.500`
-- False-alert normal rate: `0.120`
-- Alert density: `0.059`
-- Median lead time, сек: `56.0`
+- `horizon_30s`: F1=0.306, Precision=0.245, Recall=0.407, AP=0.280, ROC-AUC=0.765
+- `horizon_60s`: F1=0.531, Precision=0.455, Recall=0.637, AP=0.490, ROC-AUC=0.742
+- `horizon_120s`: F1=0.710, Precision=0.638, Recall=0.801, AP=0.703, ROC-AUC=0.756
+- `horizon_300s`: F1=0.829, Precision=0.713, Recall=0.991, AP=0.835, ROC-AUC=0.768
+
+## Runtime
+
+- Torch checkpoint: `missing_checkpoint_copy_required`
+- ONNX FP32: `reserved_not_exported`
+- ONNX INT8: `reserved_not_quantized`
+
+ONNX/INT8 оставлены как совместимый runtime-слот для слабых CPU-only систем. До переноса полного checkpoint из обучающей машины dashboard работает от сохраненного replay bundle, а не от online forward pass.
 
 ## Ограничения
 
-Это лабораторный replay-прототип. Он не является production-ready системой и не должен трактоваться как идеальный бинарный оракул аварий. Его назначение — честно показать динамику раннего предупреждения, вклад модальностей и ошибки alert-layer.
+Score модели не является вероятностью сбоя. Alert-layer отделен от фактического incident marker. Пороги выбраны по validation и не подбираются по test.

@@ -1,85 +1,92 @@
 {
   "score_semantics": {
-    "model_score_raw": "сырой warning_intensity_score; это не вероятность сбоя",
-    "model_score_rank": "ранг сырого score относительно validation; диагностический канал",
-    "risk_score_raw": "строгий risk/state канал; не используется как главный alert-score",
-    "fusion_balance": "diagnostic auxiliary-head balance; это не причинная атрибуция"
+    "model_score_raw": "primary horizon_300s score; not a calibrated incident probability",
+    "model_score_rank": "rank of horizon_300s score against validation windows",
+    "model_score_120s": "working early-warning channel",
+    "model_score_60s": "aggressive early channel; noisier",
+    "risk_score_30s": "short-horizon risk channel; keep separate from warning/anomaly",
+    "alert_state": "alert-layer state; not the raw model score and not the incident fact"
   },
   "score_distribution": {
-    "test_model_score_raw": {
-      "count": 691,
-      "min": 0.025675386,
-      "p50": 0.37831196,
-      "p90": 0.5364037,
-      "p95": 0.6710534699999999,
-      "max": 0.7507474
+    "test_horizon_300s": {
+      "count": 506,
+      "min": 0.0006869782810099,
+      "p50": 0.5696695148944855,
+      "p90": 0.9986587166786194,
+      "p95": 0.9997970461845397,
+      "max": 0.9999959468841552
     },
-    "test_model_score_rank": {
-      "count": 691,
-      "min": 0.018361581920903956,
-      "p50": 0.6850282485875706,
-      "p90": 0.8361581920903954,
-      "p95": 0.9463276836158192,
-      "max": 0.9957627118644068
+    "test_horizon_120s": {
+      "count": 506,
+      "min": 4.013080251752399e-05,
+      "p50": 0.38132368028163904,
+      "p90": 0.9848569333553314,
+      "p95": 0.9981016516685486,
+      "max": 0.9999710321426392
     },
-    "test_risk_score_raw": {
-      "count": 691,
-      "min": 0.016689,
-      "p50": 0.24590278,
-      "p90": 0.34866238,
-      "p95": 0.436184785,
-      "max": 0.521069
+    "test_horizon_60s": {
+      "count": 506,
+      "min": 7.026866114756558e-06,
+      "p50": 0.22451801598072052,
+      "p90": 0.9545506238937378,
+      "p95": 0.9860817492008209,
+      "max": 0.999055802822113
     },
-    "validation_warning_intensity_score": {
-      "count": 708,
-      "min": 0.023030551,
-      "p50": 0.21569526,
-      "p90": 0.61151374,
-      "p95": 0.6755417374999999,
-      "max": 0.7613318
+    "test_horizon_30s": {
+      "count": 506,
+      "min": 2.110442983394023e-05,
+      "p50": 0.16597934812307355,
+      "p90": 0.94777712225914,
+      "p95": 0.983296811580658,
+      "max": 0.9980411529541016
+    },
+    "validation_horizon_300s": {
+      "count": 531,
+      "min": 0.0001265556493308,
+      "p50": 0.5061461329460144,
+      "p90": 0.994902729988098,
+      "p95": 0.9997144639492036,
+      "max": 0.9999945163726808
     }
   },
   "alert_layer": {
-    "watch_threshold": 0.38790582099999993,
-    "alert_threshold": 0.6155854371304348,
-    "min_consecutive_windows": 2.0,
-    "run_alert_f1": 0.423076923076923,
-    "failure_run_recall": 0.2894736842105263,
-    "run_alert_precision": 0.7857142857142857,
-    "false_alert_run_rate": 0.1875,
-    "alert_density": 0.08615819209039548,
-    "median_lead_time_sec": 48.0,
-    "raw_score_q70": 0.38790582099999993,
-    "raw_score_q85": 0.5618592299999994,
-    "raw_score_q95": 0.6755417374999999,
-    "candidate_count": 72,
-    "feasible_candidate_count": 13,
-    "threshold_selection_warning": "",
-    "selection_split": "validation",
-    "score_column": "warning_intensity_score"
+    "watch_target": "horizon_300s",
+    "watch_threshold": 0.013862426020205,
+    "alert_confirmation_target": "horizon_60s",
+    "alert_confirmation_threshold": 0.5814547836780549,
+    "min_consecutive_windows": 2,
+    "cooldown_windows": 3
   },
   "alert_state_counts": {
-    "normal": 372,
-    "watch": 251,
-    "alert": 38,
-    "incident": 30
+    "watch": 281,
+    "alert": 172,
+    "normal": 53
   },
-  "proxy_windows": 0,
-  "kpi_sources": {
-    "kpi_dashboard_cpu_pct_source": "kpi_master3__cpustat__idle__mean_dim__mean;kpi_master3__cpustat__idle__mean_dim__last;kpi_worker1__cpustat__idle__mean_dim__mean;kpi_worker1__cpustat__idle__mean_dim__last;kpi_worker2__cpustat__idle__mean_dim__mean;kpi_worker2__cpustat__idle__mean_dim__last;kpi_worker3__cpustat__idle__mean_dim__mean;kpi_worker3__cpustat__idle__mean_dim__last;kpi_worker4__cpustat__idle__mean_dim__mean;kpi_worker4__cpustat__idle__mean_dim__last;...(+2)",
-    "kpi_dashboard_memory_pct_source": "kpi_master3__memstat__memused__mean_dim__mean;kpi_master3__memstat__memused__mean_dim__last;kpi_worker1__memstat__memused__mean_dim__mean;kpi_worker1__memstat__memused__mean_dim__last;kpi_worker2__memstat__memused__mean_dim__mean;kpi_worker2__memstat__memused__mean_dim__last;kpi_worker3__memstat__memused__mean_dim__mean;kpi_worker3__memstat__memused__mean_dim__last;kpi_worker4__memstat__memused__mean_dim__mean;kpi_worker4__memstat__memused__mean_dim__last;...(+2)",
-    "kpi_dashboard_disk_pct_source": "kpi_master3__iostat__util__mean_dim__mean;kpi_master3__iostat__util__mean_dim__last;kpi_worker1__iostat__util__mean_dim__mean;kpi_worker1__iostat__util__mean_dim__last;kpi_worker2__iostat__util__mean_dim__mean;kpi_worker2__iostat__util__mean_dim__last;kpi_worker3__iostat__util__mean_dim__mean;kpi_worker3__iostat__util__mean_dim__last;kpi_worker4__iostat__util__mean_dim__mean;kpi_worker4__iostat__util__mean_dim__last;...(+2)",
-    "kpi_dashboard_network_mbps_source": "kpi_master3__netstat__rxkb_ss__mean_dim__mean;kpi_master3__netstat__rxkb_ss__mean_dim__last;kpi_master3__netstat__txkb_ss__mean_dim__mean;kpi_master3__netstat__txkb_ss__mean_dim__last;kpi_worker1__netstat__rxkb_ss__mean_dim__mean;kpi_worker1__netstat__rxkb_ss__mean_dim__last;kpi_worker1__netstat__txkb_ss__mean_dim__mean;kpi_worker1__netstat__txkb_ss__mean_dim__last;kpi_worker2__netstat__rxkb_ss__mean_dim__mean;kpi_worker2__netstat__rxkb_ss__mean_dim__last;...(+14)"
+  "runtime_slots": {
+    "torch_state": {
+      "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.pt",
+      "source_expected": "hypothesis_results\\efficient_hades_protocol\\protocol_fixed_cuda_h60\\models\\stratified_by_workload\\modern_metric_seed43.pt",
+      "status": "missing_checkpoint_copy_required"
+    },
+    "onnx_fp32": {
+      "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.onnx",
+      "status": "reserved_not_exported"
+    },
+    "onnx_int8": {
+      "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.int8.onnx",
+      "status": "reserved_not_quantized",
+      "quantization_policy": "dynamic INT8 for Linear/attention; static INT8 optional with representative calibration set"
+    }
   },
   "run_event_counts": {
-    "missed_failure": 27,
-    "normal_no_alert": 22,
-    "false_alert": 3,
-    "early_alert": 3
+    "early_alert": 20,
+    "false_alert": 10,
+    "missed_failure": 9,
+    "normal_no_alert": 6
   },
   "warnings": [
-    "model_score_rank не является вероятностью сбоя",
-    "fusion balance не является causal attribution",
-    "alert_state является решением alert-layer, а incident_marker является фактом события"
+    "ONNX/INT8 slots are reserved; selected full checkpoint must be copied before true online inference.",
+    "model_score_raw is a ranking/alert score, not an incident probability.",
+    "horizon_30s/y_risk is a separate short-horizon task and should not be averaged into warning."
   ]
 }
