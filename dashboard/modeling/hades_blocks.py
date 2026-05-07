@@ -1423,7 +1423,7 @@ def train_variant_seed(
 
     export_report = {"status": "skipped", "reason": "export disabled"}
     runtime_metrics = []
-    if cfg.export_onnx and spec["runtime"] == "onnx_int8":
+    if cfg.export_onnx:
         export_dir = output_dir / "exports" / f"{variant}_seed{seed}"
         onnx_path = export_dir / "model_fp32.onnx"
         int8_path = export_dir / "model_int8.onnx"
@@ -1433,6 +1433,7 @@ def train_variant_seed(
             onnx_fp32_bench = benchmark_onnx(onnx_path, arrays, idx["test"], cfg)
             export_report = {
                 "status": "ok",
+                "source_runtime": str(spec.get("runtime", "unknown")),
                 "onnx_fp32": str(onnx_path),
                 "onnx_fp32_bytes": model_file_size(onnx_path),
                 "quantization": q_report,

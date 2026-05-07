@@ -21,6 +21,7 @@ STATE_LABELS = {
 }
 
 CASE_LABELS = {
+    "long_test_stream": "длинный сбойный test-stream",
     "multimodal_success": "мультимодальный кейс",
     "log_driven_success": "логовый кейс",
     "kpi_driven_success": "KPI-кейс",
@@ -36,6 +37,7 @@ CASE_LABELS = {
 }
 
 CASE_ORDER = [
+    "long_test_stream",
     "multimodal_success",
     "log_driven_success",
     "kpi_driven_success",
@@ -59,7 +61,22 @@ LOG_PATTERNS = [
     (r"remote fetch|shuffle|fetch", "shuffle / remote fetch"),
     (r"resourcemanager|nodemanager|applicationmaster", "YARN coordination"),
     (r"launching container|container", "container lifecycle"),
+    (r"shutdown|stopped|blockmanager|executor lost|lost executor", "service lifecycle / shutdown"),
+    (r"heartbeat|lost|expired|unreachable", "lost heartbeat / unreachable"),
 ]
+
+LOG_PATTERN_MEANING = {
+    "I/O error / storage": "прямой storage-сигнал",
+    "task blocked / задержка": "задержка выполнения",
+    "connection timeout": "сетевой таймаут",
+    "failure / exception": "ошибка приложения",
+    "memory pressure": "давление на память",
+    "shuffle / remote fetch": "shuffle / data exchange",
+    "YARN coordination": "координация кластера",
+    "container lifecycle": "контейнеры",
+    "service lifecycle / shutdown": "остановка сервисов",
+    "lost heartbeat / unreachable": "потеря связи",
+}
 
 FAMILY_LABELS = {
     "cpustat": "CPU",
@@ -366,6 +383,13 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
                 score = _safe_float(focus.get("model_score", focus.get("alert_score", focus.get("risk_score"))))
                 lead = _safe_float(focus.get("time_to_failure_sec", focus.get("run_event_lead_time_sec", focus.get("lead_time_sec"))), np.nan)
                 lead_text = "n/a" if not np.isfinite(lead) else f"{lead:.0f} сек"
+                if kind == "long_test_stream":
+                    note = (
+                        "Длинный live-сценарий: спокойный test-префикс, затем реальный сбойный хвост. "
+                        "Он нужен, чтобы проверить не только пик score, но и поведение alert-слоя во времени."
+                    )
+                else:
+                    note = f"{CASE_LABELS.get(kind, kind)}: оценка модели={score:.2f}; lead={lead_text}."
                 rows.append(
                     {
                         "case_id": str(case_id),
@@ -374,7 +398,7 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
                         "run_id": str(focus["run_id"]),
                         "focus_window_ts": pd.Timestamp(focus["window_ts"]),
                         "risk_score": score,
-                        "note": f"{CASE_LABELS.get(kind, kind)}: оценка модели={score:.2f}; lead={lead_text}.",
+                        "note": note,
                     }
                 )
             out = pd.DataFrame(rows)
@@ -621,31 +645,92 @@ def nearest_step(run_df: pd.DataFrame, focus_ts: pd.Timestamp) -> int:
 def build_log_evidence(run_df: pd.DataFrame, current_idx: int) -> pd.DataFrame:
     current_idx = int(np.clip(current_idx, 0, max(len(run_df) - 1, 0)))
     scope = run_df.iloc[: current_idx + 1].copy()
-    baseline = run_df.head(max(3, len(run_df) // 4)).copy()
+    recent = scope.tail(min(16, max(4, len(scope)))).copy()
+    current = run_df.iloc[[current_idx]].copy()
+    baseline = run_df.head(max(8, len(run_df) // 4)).copy()
 
     rows: list[dict[str, Any]] = []
+    current_log_available = bool(int(_safe_float(run_df.iloc[current_idx].get("log_available", 0), 0)))
+    if not current_log_available:
+        rows.append(
+            {
+                "Сигнал": "логи текущего окна недоступны",
+                "Сейчас": 0,
+                "Последние окна": int(pd.to_numeric(recent.get("log_available", 0), errors="coerce").fillna(0).clip(0, 1).sum()),
+                "Префикс": int(pd.to_numeric(scope.get("log_available", 0), errors="coerce").fillna(0).clip(0, 1).sum()),
+                "Δ к baseline": 0.0,
+                "Смысл": "текущий score читаем как KPI/fallback",
+            }
+        )
     for pattern, label in LOG_PATTERNS:
         regex = re.compile(pattern, flags=re.IGNORECASE)
-        active = 0
-        base = 0
+        current_hits = 0
+        recent_hits = 0
+        base_hits = 0
+        prefix_hits = 0
+        for _, row in current.iterrows():
+            if regex.search(str(row.get("log_text", ""))):
+                current_hits += 1
+        for _, row in recent.iterrows():
+            if regex.search(str(row.get("log_text", ""))):
+                recent_hits += 1
         for _, row in scope.iterrows():
             if regex.search(str(row.get("log_text", ""))):
-                active += max(1, int(_safe_float(row.get("micro_log_count", row.get("macro_log_count", 1)), 1)))
+                prefix_hits += 1
         for _, row in baseline.iterrows():
             if regex.search(str(row.get("log_text", ""))):
-                base += max(1, int(_safe_float(row.get("micro_log_count", row.get("macro_log_count", 1)), 1)))
-        if active <= 0:
+                base_hits += 1
+        if recent_hits <= 0 and current_hits <= 0:
             continue
-        active_rate = active / max(len(scope), 1)
-        base_rate = base / max(len(baseline), 1)
+        active_rate = recent_hits / max(len(recent), 1)
+        base_rate = base_hits / max(len(baseline), 1)
         delta = ((active_rate + 1e-6) / (base_rate + 1e-6) - 1.0) * 100.0
-        rows.append({"Шаблон": label, "Частота": active, "Δ к baseline": delta})
+        rows.append(
+            {
+                "Сигнал": label,
+                "Сейчас": current_hits,
+                "Последние окна": recent_hits,
+                "Префикс": prefix_hits,
+                "Δ к baseline": delta,
+                "Смысл": LOG_PATTERN_MEANING.get(label, "логовый паттерн"),
+            }
+        )
 
     if not rows:
-        rows = [{"Шаблон": "нет выраженных логовых паттернов", "Частота": 0, "Δ к baseline": 0.0}]
+        current_text = str(run_df.iloc[current_idx].get("log_text", "") or "").strip()
+        if not current_log_available or not current_text or current_text.lower() == "nan":
+            rows = [
+                {
+                    "Сигнал": "логи текущего окна недоступны",
+                    "Сейчас": 0,
+                    "Последние окна": int(pd.to_numeric(recent.get("log_available", 0), errors="coerce").fillna(0).sum()),
+                    "Префикс": int(pd.to_numeric(scope.get("log_available", 0), errors="coerce").fillna(0).sum()),
+                    "Δ к baseline": 0.0,
+                    "Смысл": "модель опирается на KPI/fallback",
+                }
+            ]
+        else:
+            rows = [
+                {
+                    "Сигнал": "критических логовых паттернов нет",
+                    "Сейчас": 0,
+                    "Последние окна": 0,
+                    "Префикс": 0,
+                    "Δ к baseline": 0.0,
+                    "Смысл": "логи есть, но без явной аварийной лексики",
+                }
+            ]
 
-    out = pd.DataFrame(rows).sort_values(["Частота", "Δ к baseline"], ascending=[False, False]).head(5).reset_index(drop=True)
-    contrib = np.maximum(out["Частота"].astype(float), 0.0) * (1.0 + np.maximum(out["Δ к baseline"].astype(float), -90.0) / 100.0)
+    out = pd.DataFrame(rows)
+    out["_priority"] = out["Сигнал"].astype(str).eq("логи текущего окна недоступны").astype(int)
+    out = (
+        out.sort_values(["_priority", "Сейчас", "Последние окна", "Δ к baseline"], ascending=[False, False, False, False])
+        .drop(columns=["_priority"])
+        .head(5)
+        .reset_index(drop=True)
+    )
+    contrib = np.maximum(out["Сейчас"].astype(float) * 1.8 + out["Последние окна"].astype(float), 0.0)
+    contrib = contrib * (1.0 + np.maximum(out["Δ к baseline"].astype(float), -90.0) / 100.0)
     denom = float(contrib.sum()) if float(contrib.sum()) > 0 else 1.0
     out["Вклад"] = contrib / denom
     out.insert(0, "Ранг", np.arange(1, len(out) + 1))

@@ -950,6 +950,29 @@ def _copy_support_files(protocol_run_dir: Path, model_out_dir: Path) -> None:
             shutil.copy2(src, model_out_dir / name)
 
 
+def _promote_onnx_exports(protocol_run_dir: Path, model_out_dir: Path, split_protocol: str, variant: str, seed: int) -> dict[str, str]:
+    model_out_dir.mkdir(parents=True, exist_ok=True)
+    split_name = split_protocol.replace(":", "_")
+    export_dirs = [
+        protocol_run_dir / "exports" / split_name / f"{variant}_seed{seed}",
+        protocol_run_dir / "exports" / f"{variant}_seed{seed}",
+    ]
+    mapping = {
+        "model_fp32.onnx": "model.onnx",
+        "model_int8.onnx": "model.int8.onnx",
+    }
+    promoted: dict[str, str] = {}
+    for src_name, dst_name in mapping.items():
+        for export_dir in export_dirs:
+            src = export_dir / src_name
+            if src.exists():
+                dst = model_out_dir / dst_name
+                shutil.copy2(src, dst)
+                promoted[dst_name] = _relative(src)
+                break
+    return promoted
+
+
 def _runtime_slots(protocol_run_dir: Path, model_out_dir: Path, split_protocol: str, variant: str, seed: int) -> dict[str, Any]:
     expected_state = protocol_run_dir / "models" / split_protocol / f"{variant}_seed{seed}.pt"
     local_state = model_out_dir / "model.pt"
@@ -962,7 +985,7 @@ def _runtime_slots(protocol_run_dir: Path, model_out_dir: Path, split_protocol: 
         torch_status = "available"
     else:
         torch_status = "missing_checkpoint_copy_required"
-    return {
+    runtime = {
         "torch_state": {
             "path": _relative(local_state),
             "source_expected": _relative(expected_state),
@@ -978,6 +1001,12 @@ def _runtime_slots(protocol_run_dir: Path, model_out_dir: Path, split_protocol: 
             "quantization_policy": "dynamic INT8 for Linear/attention; static INT8 optional with representative calibration set",
         },
     }
+    export_dir = protocol_run_dir / "exports" / split_protocol.replace(":", "_") / f"{variant}_seed{seed}"
+    if (export_dir / "model_fp32.onnx").exists():
+        runtime["onnx_fp32"]["source_expected"] = _relative(export_dir / "model_fp32.onnx")
+    if (export_dir / "model_int8.onnx").exists():
+        runtime["onnx_int8"]["source_expected"] = _relative(export_dir / "model_int8.onnx")
+    return runtime
 
 
 def export_protocol_fixed_bundle(
@@ -1017,7 +1046,26 @@ def export_protocol_fixed_bundle(
         run_metrics.loc[:, "model"] = "protocol-fixed-efficient-hades"
 
     _copy_support_files(protocol_run_dir, model_out_dir)
+    promoted_onnx = _promote_onnx_exports(protocol_run_dir, model_out_dir, split_protocol, variant, seed)
     runtime_slots = _runtime_slots(protocol_run_dir, model_out_dir, split_protocol, variant, seed)
+    try:
+        from dashboard.runtime.live_inference import build_live_inference_slice, copy_live_inference_slice
+
+        live_forward = build_live_inference_slice(
+            model_out_dir,
+            contract_path=contract_path,
+            replay_frame=replay,
+            output_dir=model_out_dir,
+            force=True,
+            demo_only=True,
+            input_builder="contract_features",
+        )
+        copy_live_inference_slice(model_out_dir, out_dir)
+    except Exception as exc:
+        live_forward = {
+            "status": "unavailable",
+            "reason": f"{type(exc).__name__}: {exc}",
+        }
     metric_records = _metrics_records(metrics)
     baseline_records = _baseline_records()
     diagnostics = _diagnostics(metrics, protocol_run_dir, split_protocol, variant, seed)
@@ -1048,6 +1096,8 @@ def export_protocol_fixed_bundle(
         "protocol_baseline_metrics": baseline_records,
         "baseline_diagnostics": diagnostics,
         "runtime": runtime_slots,
+        "promoted_onnx_exports": promoted_onnx,
+        "live_forward": live_forward,
         "onnx_int8_plan": {
             "status": runtime_slots["onnx_int8"]["status"],
             "reason": "Reserved for CPU-only deployment; export requires selected Torch checkpoint.",

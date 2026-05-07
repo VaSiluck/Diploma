@@ -874,7 +874,7 @@ def train_variant_protocol(
         df["model_bytes"] = int(state_path.stat().st_size)
 
     export_report = {"status": "skipped", "reason": "export disabled"}
-    if cfg.export_onnx and spec["runtime"] == "onnx_int8":
+    if cfg.export_onnx:
         export_dir = output_dir / "exports" / split_protocol.replace(":", "_") / f"{variant}_seed{seed}"
         onnx_path = export_dir / "model_fp32.onnx"
         int8_path = export_dir / "model_int8.onnx"
@@ -892,6 +892,7 @@ def train_variant_protocol(
                 "split_protocol": split_protocol,
                 "variant": variant,
                 "seed": int(seed),
+                "source_runtime": str(spec.get("runtime", "unknown")),
                 "onnx_fp32": str(onnx_path),
                 "onnx_fp32_bytes": eh.model_file_size(onnx_path),
                 "quantization": q_report,

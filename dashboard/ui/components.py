@@ -262,6 +262,79 @@ def inject_css() -> str:
         font-weight:800;
         white-space:nowrap;
     }
+    .live-stream-card {
+        border:1px solid #b7e4dc;
+        background:#f0fdfa;
+        border-radius:8px;
+        padding:9px 10px;
+        margin-top:2px;
+    }
+    .live-stream-head {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:8px;
+        font-size:12.5px;
+        color:#134e4a;
+    }
+    .live-dot {
+        width:9px;
+        height:9px;
+        border-radius:999px;
+        background:#14b8a6;
+        box-shadow:0 0 0 5px rgba(20,184,166,0.13);
+        flex:0 0 auto;
+    }
+    .live-progress {
+        height:7px;
+        background:#ccfbf1;
+        border-radius:999px;
+        overflow:hidden;
+        margin:8px 0 7px 0;
+    }
+    .live-progress > div {
+        height:100%;
+        background:linear-gradient(90deg,#0d9488,#2563eb);
+        border-radius:999px;
+    }
+    .live-stream-meta {
+        display:flex;
+        flex-wrap:wrap;
+        gap:7px;
+        color:#0f766e;
+        font-size:11px;
+    }
+    .fusion-signal {
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        border-radius:8px;
+        padding:8px 9px;
+        margin-bottom:8px;
+    }
+    .fusion-signal-head {
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:8px;
+        color:#334155;
+        font-size:12px;
+    }
+    .fusion-signal-head span {
+        color:#64748b;
+        text-align:right;
+        font-size:11px;
+    }
+    .fusion-meter {
+        height:7px;
+        border-radius:999px;
+        overflow:hidden;
+        background:#eef2f7;
+        margin-top:7px;
+    }
+    .fusion-meter > div {
+        height:100%;
+        border-radius:999px;
+    }
     .case-note {
         border:1px solid #d8e8ff;
         background:#f4f9ff;
@@ -391,7 +464,7 @@ def inject_css() -> str:
     }
     .evidence-head, .evidence-row {
         display:grid;
-        grid-template-columns:28px minmax(0, 1fr) 46px 62px 58px;
+        grid-template-columns:28px minmax(0, 1.3fr) 52px 74px minmax(0, 0.9fr);
         gap:6px;
         align-items:center;
         padding:8px 8px;
@@ -817,6 +890,16 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     score_col = "alert_score" if "alert_score" in run_df.columns else ("model_score_raw" if "model_score_raw" in run_df.columns else ("model_score" if "model_score" in run_df.columns else "risk_score"))
     risk = pd.to_numeric(run_df[score_col], errors="coerce").fillna(0.0).clip(0, 1)
     rank = pd.to_numeric(run_df.get("model_score_rank", pd.Series(np.nan, index=run_df.index)), errors="coerce")
+    live_forward = run_df.get("score_source", pd.Series("", index=run_df.index)).fillna("").astype(str).eq("live_forward").any()
+    visible_mask = pd.Series(True, index=run_df.index)
+    if live_forward:
+        visible_mask = pd.Series(np.arange(len(run_df)) <= current_idx, index=run_df.index)
+    risk_plot = risk.where(visible_mask, np.nan)
+    rank_plot = rank.where(visible_mask, np.nan)
+    processed_count = int(visible_mask.sum())
+    queued_count = max(len(run_df) - processed_count, 0)
+    line_color = "#0f766e" if live_forward else "#2f80ed"
+    current_color = "#0f766e" if live_forward else "#0f73e8"
     current_ts = pd.Timestamp(cur["window_ts"])
     current_score = safe_float(cur.get(score_col))
     watch_threshold = safe_float(cur.get("watch_threshold", RISK_NORMAL_MAX), RISK_NORMAL_MAX)
@@ -825,6 +908,8 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     alert_threshold = float(np.clip(alert_threshold, watch_threshold, 1.0))
     anchor_policy = str(cur.get("anchor_policy", ""))
     anchor_ts = pd.to_datetime(cur.get("event_anchor", cur.get("fail_start")), utc=True, errors="coerce")
+    stream_start = pd.to_datetime(cur.get("stream_start", cur.get("run_start", pd.NaT)), utc=True, errors="coerce")
+    stream_end = pd.to_datetime(cur.get("stream_end", cur.get("run_end", pd.NaT)), utc=True, errors="coerce")
 
     window_end = pd.to_datetime(cur.get("window_end"), utc=True, errors="coerce")
     macro_sec = int(max(safe_float(cur.get("macro_window_sec", 60), 60), safe_float(cur.get("micro_window_sec", 10), 10)))
@@ -835,6 +920,18 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
         window_end = min(window_end, pd.Timestamp(x.max()))
     if window_end <= current_ts:
         window_end = current_ts + pd.Timedelta(seconds=int(safe_float(cur.get("micro_window_sec", 10), 10)))
+    if live_forward:
+        if pd.isna(stream_start):
+            stream_start = x.min()
+        if pd.isna(stream_end):
+            stream_end = x.max()
+        if pd.notna(stream_start) and pd.notna(x.min()):
+            stream_start = min(pd.Timestamp(stream_start), pd.Timestamp(x.min()))
+        if pd.notna(stream_end) and pd.notna(x.max()):
+            stream_end = max(pd.Timestamp(stream_end), pd.Timestamp(x.max()))
+    threshold_x = x
+    if live_forward and pd.notna(stream_start) and pd.notna(stream_end) and pd.Timestamp(stream_end) > pd.Timestamp(stream_start):
+        threshold_x = pd.Series([pd.Timestamp(stream_start), pd.Timestamp(stream_end)])
 
     fig.add_hrect(y0=0.0, y1=watch_threshold, fillcolor="#ecfdf5", opacity=0.42, line_width=0, layer="below")
     fig.add_hrect(y0=watch_threshold, y1=alert_threshold, fillcolor="#fffbeb", opacity=0.38, line_width=0, layer="below")
@@ -861,36 +958,95 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     fig.add_vrect(
         x0=current_ts,
         x1=window_end,
-        fillcolor="#dbeafe",
+        fillcolor="#ccfbf1" if live_forward else "#dbeafe",
         opacity=0.70,
         line_width=0,
         layer="below",
     )
+    if live_forward and queued_count > 0 and pd.notna(x.iloc[min(current_idx + 1, len(x) - 1)]):
+        future_start = pd.Timestamp(x.iloc[min(current_idx + 1, len(x) - 1)])
+        future_end = pd.Timestamp(stream_end) if pd.notna(stream_end) else pd.Timestamp(x.max())
+        if future_end >= future_start:
+            fig.add_vrect(
+                x0=future_start,
+                x1=future_end,
+                fillcolor="#f1f5f9",
+                opacity=0.72,
+                line_width=0,
+                layer="below",
+            )
+            fig.add_annotation(
+                x=future_start,
+                y=0.08,
+                text=f"очередь: {queued_count} окон<br>score еще не раскрыт",
+                showarrow=False,
+                xanchor="left",
+                yanchor="bottom",
+                bgcolor="#f8fafc",
+                bordercolor="#cbd5e1",
+                borderpad=5,
+                font={"size": 10, "color": "#475569"},
+            )
+
+    if live_forward and pd.notna(stream_start) and pd.notna(stream_end) and pd.Timestamp(stream_end) > pd.Timestamp(stream_start):
+        processed_end = min(max(current_ts, pd.Timestamp(stream_start)), pd.Timestamp(stream_end))
+        fig.add_trace(
+            go.Scatter(
+                x=[pd.Timestamp(stream_start), pd.Timestamp(stream_end)],
+                y=[0.035, 0.035],
+                mode="lines",
+                name="Полный test-stream",
+                line={"color": "#cbd5e1", "width": 5},
+                hoverinfo="skip",
+            )
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=[pd.Timestamp(stream_start), processed_end],
+                y=[0.035, 0.035],
+                mode="lines",
+                name="Обработанный prefix",
+                line={"color": "#0f766e", "width": 5},
+                hoverinfo="skip",
+            )
+        )
 
     fig.add_trace(
         go.Scatter(
             x=x,
-            y=risk,
+            y=risk_plot,
             mode="lines",
-            name="Оценка модели" if not preview else "Proxy-оценка",
-            line={"color": "#2f80ed", "width": 3.0, "shape": "spline", "smoothing": 0.55},
-            fill="tozeroy",
-            fillcolor="rgba(47,128,237,0.13)",
-            customdata=np.stack([rank.fillna(np.nan).to_numpy()], axis=-1),
+            name="Live score модели" if live_forward else ("Оценка модели" if not preview else "Proxy-оценка"),
+            line={"color": line_color, "width": 3.0, "shape": "spline", "smoothing": 0.55},
+            fill="none" if live_forward else "tozeroy",
+            fillcolor="rgba(15,118,110,0.14)" if live_forward else "rgba(47,128,237,0.13)",
+            customdata=np.stack([rank_plot.fillna(np.nan).to_numpy()], axis=-1),
             hovertemplate="%{x|%H:%M:%S}<br>raw score=%{y:.3f}<br>ранг validation=%{customdata[0]:.3f}<extra></extra>",
         )
     )
     fig.add_trace(
         go.Scatter(
             x=x,
-            y=risk,
+            y=risk_plot,
             mode="markers",
-            name="Окна replay",
-            marker={"size": 4.0, "color": "#2f80ed", "opacity": 0.42},
+            name="Обработанные окна" if live_forward else "Окна replay",
+            marker={"size": 4.5 if live_forward else 4.0, "color": line_color, "opacity": 0.52 if live_forward else 0.42},
             hoverinfo="skip",
             showlegend=False,
         )
     )
+    if live_forward and queued_count > 0:
+        future_x = x.loc[~visible_mask]
+        fig.add_trace(
+            go.Scatter(
+                x=future_x,
+                y=[0.018] * len(future_x),
+                mode="markers",
+                name="Окна в очереди",
+                marker={"size": 5.5, "symbol": "line-ns-open", "color": "#94a3b8", "opacity": 0.8},
+                hovertemplate="%{x|%H:%M:%S}<br>ожидает forward pass<extra></extra>",
+            )
+        )
 
     for value, label, color, dash in [
         (watch_threshold, "Порог наблюдения", "#f59e0b", "dot"),
@@ -898,8 +1054,8 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     ]:
         fig.add_trace(
             go.Scatter(
-                x=x,
-                y=[value] * len(x),
+                x=threshold_x,
+                y=[value] * len(threshold_x),
                 mode="lines",
                 name=label,
                 line={"color": color, "width": 1.1, "dash": dash},
@@ -918,7 +1074,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
             )
         )
 
-    fig.add_vline(x=current_ts, line_color="#0f73e8", line_width=1.5)
+    fig.add_vline(x=current_ts, line_color=current_color, line_width=1.5)
     fig.add_trace(
         go.Scatter(
             x=[current_ts],
@@ -926,27 +1082,31 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
             mode="markers+text",
             text=[format_score(current_score)],
             textposition="middle right",
-            name="Выбранное окно",
-            marker={"size": 12, "color": "#ffffff", "line": {"color": "#0f73e8", "width": 2.4}},
+            name="Текущее live-окно" if live_forward else "Выбранное окно",
+            marker={"size": 13 if live_forward else 12, "color": "#ffffff", "line": {"color": current_color, "width": 2.7 if live_forward else 2.4}},
             hoverinfo="skip",
         )
     )
     fig.add_annotation(
         x=current_ts,
         y=1.0,
-        text=f"Выбранное окно<br>{current_ts.strftime('%H:%M')}-{window_end.strftime('%H:%M')}",
+        text=(f"LIVE окно {processed_count}/{len(run_df)}<br>{current_ts.strftime('%H:%M')}-{window_end.strftime('%H:%M')}" if live_forward else f"Выбранное окно<br>{current_ts.strftime('%H:%M')}-{window_end.strftime('%H:%M')}"),
         showarrow=False,
         yanchor="bottom",
-        bgcolor="#0f73e8",
-        bordercolor="#0f73e8",
+        bgcolor=current_color,
+        bordercolor=current_color,
         borderpad=5,
         font={"size": 10, "color": "#ffffff"},
     )
 
     alert_state = run_df.get("alert_state", pd.Series("", index=run_df.index)).fillna("").astype(str).str.lower()
+    if live_forward:
+        alert_state = alert_state.where(visible_mask, "")
     alert_mask = alert_state.eq("alert")
     if not alert_mask.any():
         alert_mask = pd.to_numeric(run_df.get("alert_fired", 0), errors="coerce").fillna(0).astype(int).eq(1)
+        if live_forward:
+            alert_mask = alert_mask & visible_mask
     if alert_mask.any():
         alert_ts = pd.Timestamp(pd.to_datetime(run_df.loc[alert_mask, "window_ts"], utc=True, errors="coerce").iloc[0])
         fig.add_vline(x=alert_ts, line_color="#f59e0b", line_width=1.8, line_dash="dash")
@@ -962,7 +1122,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
             borderpad=4,
         )
 
-    if anchor_policy != "normal_no_failure" and pd.notna(anchor_ts):
+    if anchor_policy != "normal_no_failure" and pd.notna(anchor_ts) and ((not live_forward) or pd.Timestamp(anchor_ts) <= current_ts):
         anchor_label, anchor_color = anchor_badge_parts(anchor_policy)
         line_dash = "solid" if anchor_policy in {"explicit_raw_log_keyword_or_severity", "explicit_log_signal"} else "dash"
         fig.add_vline(x=pd.Timestamp(anchor_ts), line_color=anchor_color, line_width=1.2, line_dash=line_dash)
@@ -984,13 +1144,17 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
         fig.add_annotation(xref="paper", x=0.017, y=min(watch_y, 1.0), text="Наблюдение", showarrow=False, bgcolor="#fff7ed", font={"color": "#d97706", "size": 11}, bordercolor="#facc15", borderpad=4)
         fig.add_annotation(xref="paper", x=0.017, y=normal_y, text="Норма", showarrow=False, bgcolor="#ecfdf5", font={"color": "#15803d", "size": 11}, bordercolor="#86efac", borderpad=4)
 
-    x_start = pd.Timestamp(x.min())
-    x_end = pd.Timestamp(x.max())
+    if live_forward and pd.notna(stream_start) and pd.notna(stream_end) and pd.Timestamp(stream_end) > pd.Timestamp(stream_start):
+        x_start = pd.Timestamp(stream_start)
+        x_end = pd.Timestamp(stream_end)
+    else:
+        x_start = pd.Timestamp(x.min())
+        x_end = pd.Timestamp(x.max())
     if pd.notna(anchor_ts):
         x_end = max(x_end, pd.Timestamp(anchor_ts))
     span_sec = max((x_end - x_start).total_seconds(), 0.0)
-    left_pad_sec = max(20.0, min(45.0, span_sec * 0.10))
-    right_pad_sec = max(20.0, min(45.0, span_sec * 0.12))
+    left_pad_sec = max(20.0, min(45.0, span_sec * 0.10)) if not live_forward else max(15.0, min(60.0, span_sec * 0.03))
+    right_pad_sec = max(20.0, min(45.0, span_sec * 0.12)) if not live_forward else max(20.0, min(75.0, span_sec * 0.04))
     x_range = [
         x_start - pd.Timedelta(seconds=left_pad_sec),
         x_end + pd.Timedelta(seconds=right_pad_sec),
@@ -1139,33 +1303,39 @@ def render_log_table_html(log_df: pd.DataFrame) -> str:
     rows = []
     for _, row in log_df.iterrows():
         rank = int(safe_float(row.get("Ранг", 0), 0))
-        label = str(row.get("Шаблон", ""))
-        freq = int(safe_float(row.get("Частота", 0), 0))
+        label = str(row.get("Сигнал", row.get("Шаблон", "")))
+        current = int(safe_float(row.get("Сейчас", 0), 0))
+        recent = int(safe_float(row.get("Последние окна", row.get("Частота", 0)), 0))
         delta = safe_float(row.get("Δ к baseline", 0.0), 0.0)
         contrib = float(np.clip(safe_float(row.get("Вклад", 0.0), 0.0), 0, 1))
+        meaning = str(row.get("Смысл", ""))
         delta_cls = "delta-up" if delta > 5 else ("delta-down" if delta < -5 else "delta-flat")
         if abs(delta) >= 1000:
             delta_text = f"{delta / 1000:+.1f}k%"
         else:
             delta_text = f"{delta:+.0f}%"
-        freq_txt = f"{freq:,}".replace(",", " ")
+        current_txt = f"{current:,}".replace(",", " ")
+        recent_txt = f"{recent:,}".replace(",", " ")
         rows.append(
             "<div class='evidence-row'>"
             f"<div class='rank'>{rank}</div>"
             f"<div>{html.escape(label)}</div>"
-            f"<div>{freq_txt}</div>"
-            f"<div class='{delta_cls}'>{delta_text}</div>"
             "<div>"
+            f"<strong>{current_txt}</strong>"
+            f"<div class='small-muted'>посл.: {recent_txt}</div>"
+            "</div>"
+            "<div>"
+            f"<div class='{delta_cls}'>{delta_text}</div>"
             "<div class='bar-track'>"
             f"<div class='bar-fill' style='width:{contrib * 100:.1f}%'></div>"
             "</div>"
-            f"<div class='small-muted'>{contrib * 100:.1f}%</div>"
             "</div>"
+            f"<div class='small-muted'>{html.escape(meaning)}</div>"
             "</div>"
         )
     return (
         "<div class='evidence-table'>"
-        "<div class='evidence-head'><div></div><div>Шаблон</div><div>Частота</div><div>Δ baseline</div><div>Вклад</div></div>"
+        "<div class='evidence-head'><div></div><div>Сигнал</div><div>Окно</div><div>Δ baseline</div><div>Смысл</div></div>"
         f"{''.join(rows)}"
         "</div>"
     )
