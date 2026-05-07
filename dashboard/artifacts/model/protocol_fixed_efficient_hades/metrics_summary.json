@@ -97,7 +97,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -124,7 +124,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -151,7 +151,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -178,7 +178,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -205,7 +205,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -232,7 +232,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -259,7 +259,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -286,7 +286,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -313,7 +313,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -340,7 +340,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -367,7 +367,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -394,7 +394,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -421,7 +421,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -448,7 +448,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -475,7 +475,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -502,7 +502,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -529,7 +529,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -556,7 +556,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -583,7 +583,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -610,7 +610,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -637,7 +637,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -664,7 +664,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -691,7 +691,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -718,7 +718,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -745,7 +745,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -772,7 +772,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -799,7 +799,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     },
@@ -826,7 +826,7 @@
       "train_monitor_target": "horizon_60s",
       "train_monitor_value": 0.5703125,
       "train_selected_epoch": 8,
-      "torch_latency_ms_per_sample": 0.024702226528461324,
+      "torch_latency_ms_per_sample": 0.026041250021080486,
       "state_path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
       "model_bytes": 2648144
     }

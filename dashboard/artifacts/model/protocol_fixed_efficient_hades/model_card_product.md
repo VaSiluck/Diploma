@@ -21,8 +21,8 @@
 ## Runtime
 
 - Torch checkpoint: `available`
-- ONNX FP32: `reserved_not_exported`
-- ONNX INT8: `reserved_not_quantized`
+- ONNX FP32: `available`
+- ONNX INT8: `available`
 
 ONNX/INT8 оставлены как совместимый runtime-слот для слабых CPU-only систем. До переноса полного checkpoint из обучающей машины dashboard работает от сохраненного replay bundle, а не от online forward pass.
 

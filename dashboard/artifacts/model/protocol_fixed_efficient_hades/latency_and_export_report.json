@@ -1,8 +1,37 @@
 {
   "exports": [
     {
-      "status": "skipped",
-      "reason": "export disabled"
+      "status": "ok",
+      "split_protocol": "stratified_by_workload",
+      "variant": "modern_metric",
+      "seed": 43,
+      "source_runtime": "fp32",
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_fp32.onnx",
+      "onnx_fp32_bytes": 2763432,
+      "quantization": {
+        "status": "ok",
+        "mode": "dynamic",
+        "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_int8.onnx",
+        "bytes": 2190702
+      },
+      "benchmarks": [
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_fp32.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 35.118644998874515,
+          "latency_ms_per_sample": 0.27436441405370715
+        },
+        {
+          "backend": "onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_int8.onnx",
+          "batch_size": 128,
+          "batches": 20,
+          "latency_ms_per_batch": 33.958204998634756,
+          "latency_ms_per_sample": 0.26529847655183403
+        }
+      ]
     }
   ]
 }

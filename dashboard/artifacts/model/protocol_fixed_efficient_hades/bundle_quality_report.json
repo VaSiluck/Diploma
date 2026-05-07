@@ -70,12 +70,14 @@
     },
     "onnx_fp32": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.onnx",
-      "status": "reserved_not_exported"
+      "status": "available",
+      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_fp32.onnx"
     },
     "onnx_int8": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.int8.onnx",
-      "status": "reserved_not_quantized",
-      "quantization_policy": "dynamic INT8 for Linear/attention; static INT8 optional with representative calibration set"
+      "status": "available",
+      "quantization_policy": "dynamic INT8 for Linear/attention; static INT8 optional with representative calibration set",
+      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_int8.onnx"
     }
   },
   "run_event_counts": {
