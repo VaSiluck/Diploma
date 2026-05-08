@@ -21,7 +21,7 @@
     "--device",
     "cuda",
     "--variants",
-    "modern_metric",
+    "efficient_hades",
     "--seeds",
     "43",
     "--split-protocols",
@@ -38,6 +38,10 @@
     "workload_norm",
     "--metric-feature-mode",
     "raw_plus_deviation",
+    "--modern-log-backend",
+    "embeddinggemma",
+    "--embeddinggemma-model",
+    "google/embeddinggemma-300m",
     "--epochs",
     "30",
     "--batch-size",
@@ -55,10 +59,12 @@
   ],
   "single_model_policy": {
     "split_protocol": "stratified_by_workload",
-    "variant": "modern_metric",
+    "variant": "efficient_hades",
     "seed": 43,
     "normalization": "workload_norm",
     "metric_feature_mode": "raw_plus_deviation",
+    "modern_log_backend": "embeddinggemma",
+    "embeddinggemma_model": "google/embeddinggemma-300m",
     "monitor_target": "horizon_60s",
     "alert_target": "horizon_60s"
   }

@@ -1,2 +1,2 @@
 model,failure_runs,normal_runs,failure_run_recall,run_alert_precision,run_alert_f1,false_alert_run_rate,alert_density,median_lead_time_sec,alert_events
-protocol-fixed-efficient-hades,31,14,0.6129032258064516,0.6785714285714286,0.6440677966101694,0.6428571428571429,0.3044315992292871,61.0,28
+protocol-fixed-efficient-hades,31,14,0.6774193548387096,0.7241379310344828,0.7,0.5714285714285714,0.32947976878612717,66.0,29

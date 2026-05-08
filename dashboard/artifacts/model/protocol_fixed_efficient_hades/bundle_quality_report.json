@@ -10,81 +10,81 @@
   "score_distribution": {
     "test_horizon_300s": {
       "count": 519,
-      "min": 1.2153657280578043e-06,
-      "p50": 0.6236194968223572,
-      "p90": 0.997365140914917,
-      "p95": 0.9998243391513826,
-      "max": 0.9999910593032836
+      "min": 2.147467967006378e-06,
+      "p50": 0.6564915776252747,
+      "p90": 0.9985861897468566,
+      "p95": 0.9997530400753021,
+      "max": 0.999996542930603
     },
     "test_horizon_120s": {
       "count": 519,
-      "min": 1.5191480073895036e-08,
-      "p50": 0.3500857651233673,
-      "p90": 0.9918800711631774,
-      "p95": 0.9992254972457886,
-      "max": 0.9999788999557496
+      "min": 1.0969931629745132e-08,
+      "p50": 0.4082035720348358,
+      "p90": 0.9905798077583313,
+      "p95": 0.9993771016597748,
+      "max": 0.9999773502349854
     },
     "test_horizon_60s": {
       "count": 519,
-      "min": 6.041428246561509e-09,
-      "p50": 0.1509147435426712,
-      "p90": 0.9646525382995604,
-      "p95": 0.9893117904663087,
-      "max": 0.998904585838318
+      "min": 2.0709263193197103e-09,
+      "p50": 0.1496597677469253,
+      "p90": 0.9723655939102172,
+      "p95": 0.9880869567394256,
+      "max": 0.9990037083625792
     },
     "test_horizon_30s": {
       "count": 519,
-      "min": 1.8112043420615013e-08,
-      "p50": 0.0425641946494579,
-      "p90": 0.9725766897201538,
-      "p95": 0.9837254703044891,
-      "max": 0.9961718916893004
+      "min": 2.1355534229883236e-08,
+      "p50": 0.0295761097222566,
+      "p90": 0.9475330829620361,
+      "p95": 0.9887957096099853,
+      "max": 0.998651087284088
     },
     "validation_horizon_300s": {
       "count": 588,
-      "min": 2.333069559767864e-08,
-      "p50": 0.6412997841835022,
-      "p90": 0.9978577494621277,
-      "p95": 0.9998334139585495,
-      "max": 0.9999985694885254
+      "min": 2.312707003682135e-08,
+      "p50": 0.6510453224182129,
+      "p90": 0.9974426329135895,
+      "p95": 0.9997357338666917,
+      "max": 0.999997854232788
     }
   },
   "alert_layer": {
     "watch_target": "horizon_300s",
-    "watch_threshold": 0.5783348608016968,
+    "watch_threshold": 0.4506938487291337,
     "alert_confirmation_target": "horizon_60s",
-    "alert_confirmation_threshold": 0.694148461818695,
+    "alert_confirmation_threshold": 0.6688153076171873,
     "min_consecutive_windows": 2,
     "cooldown_windows": 3
   },
   "alert_state_counts": {
-    "normal": 219,
-    "alert": 158,
-    "watch": 142
+    "watch": 175,
+    "normal": 173,
+    "alert": 171
   },
   "runtime_slots": {
     "torch_state": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.pt",
-      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\modern_metric_seed43.pt",
+      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\models\\stratified_by_workload\\efficient_hades_seed43.pt",
       "status": "available"
     },
     "onnx_fp32": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.onnx",
       "status": "available",
-      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_fp32.onnx"
+      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_fp32.onnx"
     },
     "onnx_int8": {
       "path": "dashboard\\artifacts\\model\\protocol_fixed_efficient_hades\\model.int8.onnx",
       "status": "available",
       "quantization_policy": "dynamic INT8 for Linear/attention; static INT8 optional with representative calibration set",
-      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_int8.onnx"
+      "source_expected": "dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_int8.onnx"
     }
   },
   "run_event_counts": {
-    "early_alert": 19,
-    "missed_failure": 12,
-    "false_alert": 9,
-    "normal_no_alert": 5
+    "early_alert": 21,
+    "missed_failure": 10,
+    "false_alert": 8,
+    "normal_no_alert": 6
   },
   "warnings": [
     "ONNX/INT8 slots are reserved; selected full checkpoint must be copied before true online inference.",

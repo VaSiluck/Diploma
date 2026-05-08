@@ -3,33 +3,33 @@
     {
       "status": "ok",
       "split_protocol": "stratified_by_workload",
-      "variant": "modern_metric",
+      "variant": "efficient_hades",
       "seed": 43,
-      "source_runtime": "fp32",
-      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_fp32.onnx",
+      "source_runtime": "onnx_int8",
+      "onnx_fp32": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_fp32.onnx",
       "onnx_fp32_bytes": 2763432,
       "quantization": {
         "status": "ok",
         "mode": "dynamic",
-        "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_int8.onnx",
+        "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_int8.onnx",
         "bytes": 2190702
       },
       "benchmarks": [
         {
           "backend": "onnx",
-          "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_fp32.onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_fp32.onnx",
           "batch_size": 128,
           "batches": 20,
-          "latency_ms_per_batch": 35.118644998874515,
-          "latency_ms_per_sample": 0.27436441405370715
+          "latency_ms_per_batch": 41.921850002836436,
+          "latency_ms_per_sample": 0.32751445314715966
         },
         {
           "backend": "onnx",
-          "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\modern_metric_seed43\\model_int8.onnx",
+          "path": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\exports\\stratified_by_workload\\efficient_hades_seed43\\model_int8.onnx",
           "batch_size": 128,
           "batches": 20,
-          "latency_ms_per_batch": 33.958204998634756,
-          "latency_ms_per_sample": 0.26529847655183403
+          "latency_ms_per_batch": 40.57922000065446,
+          "latency_ms_per_sample": 0.31702515625511296
         }
       ]
     }

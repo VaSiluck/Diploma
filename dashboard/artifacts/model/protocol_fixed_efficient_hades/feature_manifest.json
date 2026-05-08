@@ -36,11 +36,15 @@
       "y_anomaly_equals_y_warning": true
     },
     "log": {
-      "fasttext_hash": {
+      "embeddinggemma": {
         "parser": "drain_like_regex",
         "embedding": {
-          "backend": "fasttext_hash",
+          "backend": "embeddinggemma",
+          "model_name": "google/embeddinggemma-300m",
+          "truncate_dim": 128,
+          "device": "cuda",
           "cache_loaded": false,
+          "cache_file": "C:\\Users\\а\\main\\Diploma\\dashboard\\artifacts\\model_runs\\protocol_fixed_hades\\final_protocol_fixed_hades\\cache\\embeddinggemma_f0368fa66e4570d9.npz",
           "unique_templates": 405,
           "embedding_dim": 128
         },
@@ -276,7 +280,7 @@
         7
       ],
       "log_embeddings": {
-        "fasttext_hash": [
+        "embeddinggemma": [
           2883,
           32,
           128

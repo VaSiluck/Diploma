@@ -8,7 +8,7 @@
   ],
   "leave_one_workloads": [],
   "variants": [
-    "modern_metric"
+    "efficient_hades"
   ],
   "seeds": [
     43
@@ -27,7 +27,7 @@
   "max_log_events": 32,
   "log_context_sec": 120,
   "log_embedding_dim": 128,
-  "modern_log_backend": "static_hash",
+  "modern_log_backend": "embeddinggemma",
   "embeddinggemma_model": "google/embeddinggemma-300m",
   "metric_segment_sec": 120,
   "metric_segment_len": 64,
