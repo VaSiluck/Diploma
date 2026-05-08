@@ -85,6 +85,37 @@ def _load_live_timeline_skeleton_cached(model_dir: str, index_mtime: float):
     return load_live_timeline_skeleton(Path(model_dir))
 
 
+def _select_live_inference_dir(inference):
+    report = getattr(inference, "dashboard_report", {}) or {}
+    runtime = report.get("runtime", {}) if isinstance(report, dict) else {}
+    torch_state = runtime.get("torch_state", {}) if isinstance(runtime, dict) else {}
+    candidates: list[Path] = []
+    torch_path = torch_state.get("path") if isinstance(torch_state, dict) else None
+    if torch_path:
+        path = Path(str(torch_path))
+        if not path.is_absolute():
+            path = APP_ROOT / path
+        candidates.append(path.parent)
+    candidates.append(APP_ROOT / "dashboard" / "artifacts" / "model" / "protocol_fixed_efficient_hades")
+    candidates.append(Path(inference.model_dir))
+
+    seen: set[str] = set()
+    fallback_status = None
+    fallback_dir = Path(inference.model_dir)
+    for candidate in candidates:
+        key = str(candidate.resolve())
+        if key in seen:
+            continue
+        seen.add(key)
+        status = inspect_live_inference(candidate)
+        if fallback_status is None:
+            fallback_status = status
+            fallback_dir = candidate
+        if status.ready:
+            return candidate, status
+    return fallback_dir, fallback_status or inspect_live_inference(fallback_dir)
+
+
 def _short_run(run_id: str, limit: int = 34) -> str:
     value = str(run_id)
     if len(value) <= limit:
@@ -363,7 +394,8 @@ def render_log_panel(run_df: pd.DataFrame, step_idx: int) -> None:
         cur = run_df.iloc[step_idx]
         recent = run_df.iloc[: step_idx + 1].tail(min(16, max(1, step_idx + 1)))
         current_log_available = bool(int(safe_float(cur.get("log_available", 0), 0)))
-        recent_log_share = float(pd.to_numeric(recent.get("log_available", 0), errors="coerce").fillna(0).clip(0, 1).mean()) if len(recent) else 0.0
+        recent_log_available = recent["log_available"] if "log_available" in recent.columns else pd.Series(0, index=recent.index)
+        recent_log_share = float(pd.to_numeric(recent_log_available, errors="coerce").fillna(0).clip(0, 1).mean()) if len(recent) else 0.0
         log_score = safe_float(cur.get("log_only_score", np.nan), np.nan)
         st.markdown(
             chip_row(
@@ -627,7 +659,6 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
         st.markdown(f"<div class='explain-box'>{html.escape(text)}</div>", unsafe_allow_html=True)
 
     with st.container(border=True):
-        st.markdown("<div class='section-title'>Сравнение с baseline</div>", unsafe_allow_html=True)
         target = st.segmented_control(
             "Цель baseline",
             ["y_risk", "y_warning"],
@@ -764,11 +795,14 @@ def main() -> None:
         st.stop()
 
     view = build_dashboard_view(bundle, inference)
-    live_status = inspect_live_inference(inference.model_dir)
+    live_model_dir, live_status = _select_live_inference_dir(inference)
     if "score_source_mode" not in st.session_state:
         st.session_state.score_source_mode = SCORE_SOURCE if live_status.ready else "replay_store"
+    if live_status.ready and st.session_state.get("score_source_mode") == "replay_store" and st.session_state.get("last_live_ready") is False:
+        st.session_state.score_source_mode = SCORE_SOURCE
     if not live_status.ready:
         st.session_state.score_source_mode = "replay_store"
+    st.session_state.last_live_ready = bool(live_status.ready)
     if st.session_state.get("last_score_source_mode") != st.session_state.score_source_mode:
         if st.session_state.score_source_mode == SCORE_SOURCE:
             _reset_live_stream()
@@ -778,7 +812,7 @@ def main() -> None:
     if live_requested:
         try:
             index_mtime = live_status.index_path.stat().st_mtime if live_status.index_path.exists() else 0.0
-            live_skeleton = _load_live_timeline_skeleton_cached(str(inference.model_dir), index_mtime)
+            live_skeleton = _load_live_timeline_skeleton_cached(str(live_model_dir), index_mtime)
             if not live_skeleton.empty:
                 view.timeline = live_skeleton
                 view.cases = choose_demo_cases(view.timeline)
@@ -805,7 +839,7 @@ def main() -> None:
             slice_mtime = live_status.slice_path.stat().st_mtime if live_status.slice_path.exists() else 0.0
             index_mtime = live_status.index_path.stat().st_mtime if live_status.index_path.exists() else 0.0
             live_frame, live_meta = _score_live_run_prefix_cached(
-                str(inference.model_dir),
+                str(live_model_dir),
                 str(base_case["run_id"]),
                 int(base_step_idx) + 1,
                 checkpoint_mtime,

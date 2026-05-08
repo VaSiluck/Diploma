@@ -140,30 +140,38 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
     return out
 
 
+def _numeric_column(frame: pd.DataFrame, column: str, default: float = 0.0) -> pd.Series:
+    if column in frame.columns:
+        source = frame[column]
+    else:
+        source = pd.Series(default, index=frame.index)
+    return pd.to_numeric(source, errors="coerce").fillna(default)
+
+
 def _target_proxy_scores(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     warning = pd.to_numeric(out["y_warning"], errors="coerce").fillna(0).astype(int)
     risk = pd.to_numeric(out["y_risk"], errors="coerce").fillna(0).astype(int)
 
     log_pressure = (
-        pd.to_numeric(out.get("macro_error_count", 0), errors="coerce").fillna(0)
-        + 0.45 * pd.to_numeric(out.get("macro_warn_count", 0), errors="coerce").fillna(0)
-        + 0.18 * pd.to_numeric(out.get("macro_keyword_count", 0), errors="coerce").fillna(0)
+        _numeric_column(out, "macro_error_count", 0)
+        + 0.45 * _numeric_column(out, "macro_warn_count", 0)
+        + 0.18 * _numeric_column(out, "macro_keyword_count", 0)
     )
     if float(log_pressure.max()) > 0:
         log_pressure = np.log1p(log_pressure) / np.log1p(float(log_pressure.max()))
     else:
         log_pressure = pd.Series(0.0, index=out.index)
 
-    coverage_penalty = 0.08 * (1.0 - pd.to_numeric(out.get("kpi_avail_ratio", 1.0), errors="coerce").fillna(1.0).clip(0, 1))
+    coverage_penalty = 0.08 * (1.0 - _numeric_column(out, "kpi_avail_ratio", 1.0).clip(0, 1))
     base = 0.10 + 0.16 * log_pressure + coverage_penalty
     out["warning_score"] = np.clip(np.where(warning.eq(1), 0.58, base + 0.10 * log_pressure), 0.0, 1.0)
     out["risk_score"] = np.clip(np.where(risk.eq(1), 0.82, np.where(warning.eq(1), 0.54, base)), 0.0, 1.0)
     out["pred_state"] = np.select([risk.eq(1), warning.eq(1)], ["risk", "warning"], default="normal")
 
-    log_available = pd.to_numeric(out.get("log_available", 0), errors="coerce").fillna(0).clip(0, 1)
-    kpi_available = pd.to_numeric(out.get("kpi_available", 0), errors="coerce").fillna(0).clip(0, 1)
-    both = pd.to_numeric(out.get("has_both_modalities", 0), errors="coerce").fillna(0).clip(0, 1)
+    log_available = _numeric_column(out, "log_available", 0).clip(0, 1)
+    kpi_available = _numeric_column(out, "kpi_available", 0).clip(0, 1)
+    both = _numeric_column(out, "has_both_modalities", 0).clip(0, 1)
     out["fusion_gate"] = np.where(
         (log_available.eq(1) & kpi_available.eq(1)),
         0.62 - 0.12 * both,
@@ -348,7 +356,7 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
                 kind = str(kind_values.loc[kind_values.ne("")].iloc[0]) if kind_values.ne("").any() else "normal_no_alert"
                 alert_rows = group.loc[group.get("alert_state", pd.Series("", index=group.index)).fillna("").astype(str).eq("alert")]
                 if alert_rows.empty:
-                    alert_rows = group.loc[pd.to_numeric(group.get("alert_fired", 0), errors="coerce").fillna(0).astype(int).eq(1)]
+                    alert_rows = group.loc[_numeric_column(group, "alert_fired", 0).astype(int).eq(1)]
                 focus_pool = alert_rows if not alert_rows.empty else group
                 pre_alert_focus: pd.Series | None = None
                 if kind in {"multimodal_success", "log_driven_success", "kpi_driven_success"} and not alert_rows.empty:
@@ -412,12 +420,12 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
     used: set[tuple[str, pd.Timestamp]] = set()
     used_runs: set[str] = set()
 
-    risk_score = pd.to_numeric(timeline.get("risk_score", 0.0), errors="coerce").fillna(0.0)
-    warning_score = pd.to_numeric(timeline.get("warning_score", risk_score), errors="coerce").fillna(risk_score)
-    log_available = pd.to_numeric(timeline.get("log_available", 0), errors="coerce").fillna(0).astype(int).eq(1)
-    kpi_available = pd.to_numeric(timeline.get("kpi_available", 0), errors="coerce").fillna(0).astype(int).eq(1)
+    risk_score = _numeric_column(timeline, "risk_score", 0.0)
+    warning_score = pd.to_numeric(timeline["warning_score"], errors="coerce").fillna(risk_score) if "warning_score" in timeline.columns else risk_score
+    log_available = _numeric_column(timeline, "log_available", 0).astype(int).eq(1)
+    kpi_available = _numeric_column(timeline, "kpi_available", 0).astype(int).eq(1)
     both_modalities = log_available & kpi_available
-    minutes_before_fail = pd.to_numeric(timeline.get("minutes_before_fail", np.nan), errors="coerce")
+    minutes_before_fail = _numeric_column(timeline, "minutes_before_fail", np.nan)
     pred_state = timeline.get("pred_state", pd.Series("normal", index=timeline.index)).fillna("normal").astype(str)
 
     def case_note(kind: str, row: pd.Series) -> str:
@@ -505,6 +513,17 @@ def choose_demo_cases(timeline: pd.DataFrame) -> pd.DataFrame:
         demo_pool = work.copy()
     if demo_pool.empty:
         demo_pool = work.copy()
+    for column, default in {
+        "log_available": 0,
+        "kpi_available": 0,
+        "macro_error_count": 0,
+        "macro_warn_count": 0,
+        "y_warning": 0,
+        "y_risk": 0,
+    }.items():
+        if column not in demo_pool.columns:
+            demo_pool[column] = default
+        demo_pool[column] = pd.to_numeric(demo_pool[column], errors="coerce").fillna(default)
     anchor_available = (
         demo_pool["event_anchor"].notna()
         if "event_anchor" in demo_pool.columns
@@ -656,8 +675,8 @@ def build_log_evidence(run_df: pd.DataFrame, current_idx: int) -> pd.DataFrame:
             {
                 "Сигнал": "логи текущего окна недоступны",
                 "Сейчас": 0,
-                "Последние окна": int(pd.to_numeric(recent.get("log_available", 0), errors="coerce").fillna(0).clip(0, 1).sum()),
-                "Префикс": int(pd.to_numeric(scope.get("log_available", 0), errors="coerce").fillna(0).clip(0, 1).sum()),
+                "Последние окна": int(_numeric_column(recent, "log_available", 0).clip(0, 1).sum()),
+                "Префикс": int(_numeric_column(scope, "log_available", 0).clip(0, 1).sum()),
                 "Δ к baseline": 0.0,
                 "Смысл": "текущий score читаем как KPI/fallback",
             }
@@ -703,8 +722,8 @@ def build_log_evidence(run_df: pd.DataFrame, current_idx: int) -> pd.DataFrame:
                 {
                     "Сигнал": "логи текущего окна недоступны",
                     "Сейчас": 0,
-                    "Последние окна": int(pd.to_numeric(recent.get("log_available", 0), errors="coerce").fillna(0).sum()),
-                    "Префикс": int(pd.to_numeric(scope.get("log_available", 0), errors="coerce").fillna(0).sum()),
+                    "Последние окна": int(_numeric_column(recent, "log_available", 0).sum()),
+                    "Префикс": int(_numeric_column(scope, "log_available", 0).sum()),
                     "Δ к baseline": 0.0,
                     "Смысл": "модель опирается на KPI/fallback",
                 }

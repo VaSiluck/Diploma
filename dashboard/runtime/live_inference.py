@@ -743,8 +743,13 @@ def _write_contract_feature_slice(
 
 
 def _align_replay_rows(frame: pd.DataFrame, replay: pd.DataFrame) -> pd.DataFrame:
-    keys = replay[["run_id", "window_ts", "live_replay_pos"]].copy()
+    run_col = "source_run_id" if "source_run_id" in replay.columns else "run_id"
+    ts_col = "source_window_ts" if "source_window_ts" in replay.columns else "window_ts"
+    keys = replay[[run_col, ts_col, "live_replay_pos"]].copy().rename(
+        columns={run_col: "run_id", ts_col: "window_ts"}
+    )
     keys["window_ts"] = pd.to_datetime(keys["window_ts"], utc=True, errors="coerce")
+    keys["run_id"] = keys["run_id"].astype(str)
     source = frame[["run_id", "window_ts", "row_pos"]].copy()
     source["run_id"] = source["run_id"].astype(str)
     source["window_ts"] = pd.to_datetime(source["window_ts"], utc=True, errors="coerce")
@@ -774,7 +779,15 @@ def build_live_inference_slice(
     if not force and slice_path.exists() and index_path.exists() and manifest_path.exists():
         manifest = _read_json(manifest_path)
         log_manifest = manifest.get("feature_rebuild", {}).get("log", {}) if isinstance(manifest, dict) else {}
-        if log_manifest.get("backend") == "embeddinggemma" or log_manifest.get("embedding", {}).get("backend") == "embeddinggemma":
+        log_backend = log_manifest.get("backend") or log_manifest.get("embedding", {}).get("backend")
+        long_demo_ready = (
+            not demo_only
+            or (
+                manifest.get("demo_case_id") == LONG_DEMO_CASE_ID
+                and int(manifest.get("rows") or 0) >= int(LONG_DEMO_WINDOWS)
+            )
+        )
+        if log_backend == "embeddinggemma" and long_demo_ready:
             return manifest
 
     cfg = _cfg_from_model_dir(model_dir, contract_path)
@@ -786,9 +799,9 @@ def build_live_inference_slice(
     selected_channels = list(metric_manifest.get("selected_channels") or metric_manifest.get("channels") or [])
 
     replay = _load_replay_frame(model_dir, replay_frame)
-    if input_builder == "contract_features" and demo_only:
+    if demo_only:
         replay = _make_long_test_demo_stream(replay, max_windows=LONG_DEMO_WINDOWS)
-    elif demo_only and "demo_case_kind" in replay.columns:
+    elif "demo_case_kind" in replay.columns:
         demo_runs = replay.loc[replay["demo_case_kind"].fillna("").astype(str).ne(""), "run_id"].astype(str).unique()
         if len(demo_runs):
             replay = replay.loc[replay["run_id"].astype(str).isin(set(demo_runs))].copy().reset_index(drop=True)
@@ -812,7 +825,11 @@ def build_live_inference_slice(
     full_frame["window_ts"] = pd.to_datetime(full_frame["window_ts"], utc=True, errors="coerce")
     full_frame["window_end"] = pd.to_datetime(full_frame["window_end"], utc=True, errors="coerce")
 
-    replay_keys = replay[["run_id", "window_ts"]].copy()
+    replay_key_run_col = "source_run_id" if "source_run_id" in replay.columns else "run_id"
+    replay_key_ts_col = "source_window_ts" if "source_window_ts" in replay.columns else "window_ts"
+    replay_keys = replay[[replay_key_run_col, replay_key_ts_col]].copy().rename(
+        columns={replay_key_run_col: "run_id", replay_key_ts_col: "window_ts"}
+    )
     replay_keys["run_id"] = replay_keys["run_id"].astype(str)
     replay_keys["window_ts"] = pd.to_datetime(replay_keys["window_ts"], utc=True, errors="coerce")
     replay_workloads = set(replay["workload"].dropna().astype(str)) if "workload" in replay.columns else set()
@@ -884,38 +901,9 @@ def build_live_inference_slice(
         replay_pos=aligned["live_replay_pos"].to_numpy(dtype=np.int64),
     )
 
-    keep_cols = [
-        "live_replay_pos",
-        "run_id",
-        "window_ts",
-        "window_end",
-        "workload",
-        "scenario",
-        "split",
-        "window_index",
-        "demo_case_kind",
-        "event_anchor",
-        "anchor_policy",
-        "strict_lead_sec",
-        "y_warning",
-        "y_risk",
-        "y_anomaly",
-        "score_y_warning",
-        "score_y_risk",
-        "score_y_anomaly",
-        "score_horizon_30s",
-        "score_horizon_60s",
-        "score_horizon_120s",
-        "score_horizon_300s",
-        "model_score_raw",
-        "model_score_60s",
-        "model_score_120s",
-        "risk_score_30s",
-        "alert_state",
-        "alert_fired",
-        "incident_marker",
-    ]
-    index_frame = replay[[col for col in keep_cols if col in replay.columns]].copy()
+    index_frame = replay.copy()
+    ordered_cols = ["live_replay_pos"] + [col for col in index_frame.columns if col != "live_replay_pos"]
+    index_frame = index_frame[ordered_cols]
     index_frame.to_csv(index_path, index=False, compression="gzip")
 
     manifest = {
@@ -928,6 +916,8 @@ def build_live_inference_slice(
         "index_path": str(index_path),
         "rows": int(len(row_pos)),
         "runs": int(replay["run_id"].nunique()),
+        "demo_run_id": str(replay["run_id"].iloc[0]) if replay["run_id"].nunique() == 1 else "",
+        "demo_case_id": str(replay["demo_case_id"].iloc[0]) if "demo_case_id" in replay.columns and replay["demo_case_id"].nunique() == 1 else "",
         "demo_only": bool(demo_only),
         "support_rows": int(len(frame)),
         "support_runs": int(frame["run_id"].nunique()),

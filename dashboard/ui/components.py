@@ -65,6 +65,14 @@ def format_delta(value: Any, digits: int = 3) -> str:
     return f"{sign}{value:.{digits}f}"
 
 
+def numeric_column(frame: pd.DataFrame, column: str, default: float = 0.0) -> pd.Series:
+    if column in frame.columns:
+        source = frame[column]
+    else:
+        source = pd.Series(default, index=frame.index)
+    return pd.to_numeric(source, errors="coerce").fillna(default)
+
+
 def anchor_badge_parts(anchor_policy: Any) -> tuple[str, str]:
     return ANCHOR_LABELS.get(str(anchor_policy or ""), ("неизвестный якорь", "#64748b"))
 
@@ -771,6 +779,94 @@ def inject_css() -> str:
         margin-top:3px;
         font-variant-numeric:tabular-nums;
     }
+    .baseline-compact {
+        border:1px solid #e6edf5;
+        border-radius:8px;
+        background:#fff;
+        overflow:hidden;
+        font-size:12px;
+    }
+    .baseline-compact-title {
+        display:flex;
+        align-items:center;
+        gap:7px;
+        padding:8px 9px 6px 9px;
+        color:#102033;
+        font-weight:850;
+    }
+    .baseline-compact-head,
+    .baseline-compact-row {
+        display:grid;
+        grid-template-columns:minmax(0, 1.25fr) 78px 92px 78px;
+        gap:8px;
+        align-items:center;
+        padding:7px 9px;
+        border-top:1px solid #eef3f8;
+    }
+    .baseline-compact-head {
+        color:#64748b;
+        font-size:10.8px;
+        font-weight:750;
+        background:#fbfdff;
+    }
+    .baseline-compact-row {
+        min-height:38px;
+    }
+    .baseline-compact-model {
+        color:#334155;
+        font-weight:760;
+        min-width:0;
+        overflow-wrap:anywhere;
+    }
+    .baseline-compact-score {
+        font-variant-numeric:tabular-nums;
+        text-align:right;
+        font-weight:900;
+        color:#f97316;
+    }
+    .baseline-compact-score.final {
+        color:#ef4444;
+    }
+    .baseline-compact-state {
+        color:#f97316;
+        font-weight:800;
+        white-space:nowrap;
+    }
+    .baseline-compact-state.normal {
+        color:#16a34a;
+    }
+    .baseline-compact-state.alert,
+    .baseline-compact-state.risk,
+    .baseline-compact-state.incident {
+        color:#dc2626;
+    }
+    .baseline-compact-delta {
+        text-align:right;
+        font-variant-numeric:tabular-nums;
+        font-weight:900;
+        line-height:1.05;
+        color:#64748b;
+    }
+    .baseline-compact-delta span {
+        display:block;
+        font-size:10px;
+        font-weight:750;
+        margin-top:2px;
+    }
+    .baseline-compact-delta.good {
+        color:#ef4444;
+    }
+    .baseline-compact-delta.bad {
+        color:#0f766e;
+    }
+    .baseline-compact-note {
+        color:#64748b;
+        font-size:11px;
+        line-height:1.3;
+        padding:7px 9px 8px 9px;
+        border-top:1px solid #eef3f8;
+        background:#fbfdff;
+    }
     .reliability-grid {
         display:grid;
         grid-template-columns:1fr 1fr;
@@ -937,7 +1033,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
     fig.add_hrect(y0=watch_threshold, y1=alert_threshold, fillcolor="#fffbeb", opacity=0.38, line_width=0, layer="below")
     fig.add_hrect(y0=alert_threshold, y1=1.05, fillcolor="#fff1f2", opacity=0.34, line_width=0, layer="below")
 
-    kpi_missing = pd.to_numeric(run_df.get("kpi_available", 1), errors="coerce").fillna(1).eq(0).to_numpy()
+    kpi_missing = numeric_column(run_df, "kpi_available", 1).eq(0).to_numpy()
     start = None
     has_kpi_missing = bool(kpi_missing.any())
     for idx, flag in enumerate(kpi_missing):
@@ -1104,7 +1200,7 @@ def build_risk_figure(run_df: pd.DataFrame, current_idx: int, preview: bool) -> 
         alert_state = alert_state.where(visible_mask, "")
     alert_mask = alert_state.eq("alert")
     if not alert_mask.any():
-        alert_mask = pd.to_numeric(run_df.get("alert_fired", 0), errors="coerce").fillna(0).astype(int).eq(1)
+        alert_mask = numeric_column(run_df, "alert_fired", 0).astype(int).eq(1)
         if live_forward:
             alert_mask = alert_mask & visible_mask
     if alert_mask.any():
@@ -1469,7 +1565,11 @@ def render_honest_baseline_card_html(
     target: str,
     current: pd.Series | None = None,
 ) -> str:
-    diag = _diagnostic_for_target(report, target) or _derive_diagnostic_from_table(table, target)
+    diag = _diagnostic_for_target(report, target)
+    if not diag or not np.isfinite(safe_float(diag.get("best_baseline_average_precision"), np.nan)):
+        derived = _derive_diagnostic_from_table(table, target)
+        if derived:
+            diag = derived
     if not diag:
         return "<div class='explain-box'>Baseline-сравнение недоступно.</div>"
 
@@ -1477,88 +1577,101 @@ def render_honest_baseline_card_html(
     target_short = "risk" if target == "y_risk" else "warning"
     target_label = "alert-layer" if is_run_level else ("risk" if target == "y_risk" else "warning")
     delta = safe_float(diag.get("delta_vs_best_baseline_ap"), np.nan)
-    verdict = str(diag.get("verdict", "паритет"))
-    verdict_cls = "verdict-bad" if "хуже" in verdict else ("verdict-good" if "лучше" in verdict else "verdict-even")
-    delta_cls = "delta-bad" if np.isfinite(delta) and delta < -0.02 else ("delta-good" if np.isfinite(delta) and delta > 0.02 else "delta-even")
+    best_baseline = str(diag.get("best_baseline", "baseline"))
 
-    rows = [
-        (
-            "random / prevalence",
-            diag.get("random_reference_ap"),
-            np.nan,
-            np.nan,
-            np.nan,
-            np.nan,
-            "delta-even",
-        ),
-        (
-            str(diag.get("best_baseline", "best baseline")),
-            diag.get("best_baseline_average_precision"),
-            diag.get("best_baseline_roc_auc"),
-            diag.get("best_baseline_f1"),
-            diag.get("best_baseline_recall"),
-            0.0,
-            "delta-even",
-        ),
-        (
-            "fused alert",
-            diag.get("central_average_precision"),
-            diag.get("central_roc_auc"),
-            diag.get("central_f1"),
-            diag.get("central_recall"),
-            delta,
-            delta_cls,
-        ),
-    ]
+    def compact_state(score: float) -> tuple[str, str]:
+        watch = safe_float(current.get("watch_threshold"), RISK_NORMAL_MAX) if current is not None else RISK_NORMAL_MAX
+        alert = safe_float(current.get("alert_threshold"), RISK_WARNING_MAX) if current is not None else RISK_WARNING_MAX
+        if np.isfinite(alert) and score >= alert:
+            return "Тревога", "alert"
+        if np.isfinite(watch) and score >= watch:
+            return "Предупреждение", "warning"
+        return "Норма", "normal"
 
-    html_rows = []
-    for model, ap, roc, f1, recall, row_delta, cls in rows:
-        html_rows.append(
-            "<div class='honest-row'>"
-            f"<div class='honest-model'>{html.escape(model)}</div>"
-            f"<div class='honest-num'>{format_metric(ap)}</div>"
-            f"<div class='honest-num'>{format_metric(roc)}</div>"
-            f"<div class='honest-num'>{format_metric(f1)}</div>"
-            f"<div class='honest-num'>{format_metric(recall)}</div>"
-            f"<div class='honest-num {cls}'>{format_delta(row_delta) if np.isfinite(safe_float(row_delta, np.nan)) else '—'}</div>"
-            "</div>"
-        )
-
-    current_html = ""
-    if current is not None and not is_run_level:
-        central_col = "risk_score" if target == "y_risk" else "warning_score"
+    def local_baseline_score(row: pd.Series) -> tuple[str, float, str]:
         baseline_col = f"baseline_{target_short}_score"
         baseline_model_col = f"baseline_{target_short}_model"
-        central_score = safe_float(current.get(central_col), np.nan)
-        baseline_score = safe_float(current.get(baseline_col), np.nan)
-        if np.isfinite(central_score) and np.isfinite(baseline_score):
-            baseline_model = str(current.get(baseline_model_col, diag.get("best_baseline", "baseline")))
-            current_html = (
-                "<div class='window-score-box'>"
-                "<div class='window-score'>"
-                "<div class='window-score-label'>central score окна</div>"
-                f"<div class='window-score-value'>{format_score(central_score)}</div>"
-                "</div>"
-                "<div class='window-score'>"
-                f"<div class='window-score-label'>{html.escape(baseline_model)} score окна</div>"
-                f"<div class='window-score-value'>{format_score(baseline_score)}</div>"
-                "</div>"
-                "</div>"
-            )
+        stored = safe_float(row.get(baseline_col), np.nan)
+        if np.isfinite(stored):
+            return str(row.get(baseline_model_col, best_baseline)), stored, "сохраненный baseline-score"
+        name = best_baseline.lower()
+        log_score = safe_float(row.get("log_only_score"), np.nan)
+        kpi_score = safe_float(row.get("kpi_only_score"), np.nan)
+        if ("fused" in name or ("log" in name and ("metric" in name or "kpi" in name))) and np.isfinite(log_score) and np.isfinite(kpi_score):
+            return "Baseline (простое объединение)", max(log_score, kpi_score), "лучший single-modality proxy"
+        if "log" in name and np.isfinite(log_score):
+            return "Baseline (логи)", log_score, "log-only proxy текущего окна"
+        if ("metric" in name or "kpi" in name) and np.isfinite(kpi_score):
+            return "Baseline (KPI)", kpi_score, "KPI-only proxy текущего окна"
+        if np.isfinite(log_score) and np.isfinite(kpi_score):
+            return "Baseline (простое объединение)", max(log_score, kpi_score), "лучший single-modality proxy"
+        if np.isfinite(log_score):
+            return "Baseline (логи)", log_score, "log-only proxy текущего окна"
+        if np.isfinite(kpi_score):
+            return "Baseline (KPI)", kpi_score, "KPI-only proxy текущего окна"
+        return best_baseline, safe_float(diag.get("best_baseline_average_precision"), np.nan), "AP лучшего baseline на test"
 
-    verdict_message = report.get("training_verdict", {}).get("message", "") if isinstance(report, dict) else ""
-    if not verdict_message:
-        verdict_message = "Сравнение строится по test split; F1@10% и Recall@10% считаются для верхних 10% окон по score, чтобы сравнивать ранжирование без притворной калибровки."
-    delta_label = "Δ F1" if is_run_level else "Δ AP"
+    if current is not None and not is_run_level:
+        central_score = safe_float(
+            current.get("alert_score", current.get("model_score_raw", current.get("model_score"))),
+            np.nan,
+        )
+        if target == "y_warning":
+            central_score = safe_float(current.get("warning_score", central_score), central_score)
+        baseline_model, baseline_score, score_note = local_baseline_score(current)
+    else:
+        central_score = safe_float(diag.get("central_average_precision"), np.nan)
+        baseline_model = best_baseline
+        baseline_score = safe_float(diag.get("best_baseline_average_precision"), np.nan)
+        score_note = "AP на test"
+
+    if not np.isfinite(central_score) or not np.isfinite(baseline_score):
+        central_score = safe_float(diag.get("central_average_precision"), np.nan)
+        baseline_score = safe_float(diag.get("best_baseline_average_precision"), np.nan)
+        baseline_model = best_baseline
+        score_note = "AP на test"
+
+    local_delta = central_score - baseline_score if np.isfinite(central_score) and np.isfinite(baseline_score) else np.nan
+    local_rel = (
+        local_delta / abs(baseline_score)
+        if np.isfinite(local_delta) and np.isfinite(baseline_score) and abs(baseline_score) >= 0.05
+        else np.nan
+    )
+    delta_cls = "good" if np.isfinite(local_delta) and local_delta > 0 else ("bad" if np.isfinite(local_delta) and local_delta < 0 else "")
+    if not np.isfinite(local_delta):
+        delta_text = "—"
+    elif local_delta > 0:
+        delta_text = f"{local_delta:+.2f} ↑"
+    elif local_delta < 0:
+        delta_text = f"{local_delta:.2f} ↓"
+    else:
+        delta_text = "0.00"
+    rel_text = "" if not np.isfinite(local_rel) else f"({local_rel * 100:+.1f}%)"
+    baseline_state, baseline_state_cls = compact_state(float(baseline_score)) if np.isfinite(baseline_score) else ("n/a", "normal")
+    central_state, central_state_cls = compact_state(float(central_score)) if np.isfinite(central_score) else ("n/a", "normal")
+    model_name = "Контур предупреждения"
+    score_header = "Оценка риска" if target == "y_risk" else "Оценка warning"
 
     return (
-        f"<span class='verdict-badge {verdict_cls}'>{html.escape(verdict)}</span>"
-        "<div class='honest-card'>"
-        f"<div class='honest-head'><div>Модель</div><div>AP</div><div>ROC-AUC</div><div>F1@10%</div><div>Recall@10%</div><div>{html.escape(delta_label)}</div></div>"
-        f"{''.join(html_rows)}"
-        f"<div class='honest-muted'>Цель: <strong>{html.escape(target_label)}</strong>. {html.escape(verdict_message)}</div>"
+        "<div class='baseline-compact'>"
+        "<div class='baseline-compact-title'>Сравнение с baseline</div>"
+        f"<div class='baseline-compact-head'><div>Модель</div><div>{html.escape(score_header)}</div><div>Состояние</div><div>Улучшение</div></div>"
+        "<div class='baseline-compact-row'>"
+        f"<div class='baseline-compact-model'>{html.escape(baseline_model)}</div>"
+        f"<div class='baseline-compact-score'>{format_score(baseline_score)}</div>"
+        f"<div class='baseline-compact-state {baseline_state_cls}'>{html.escape(baseline_state)}</div>"
+        "<div class='baseline-compact-delta'>—</div>"
         "</div>"
-        f"{current_html}"
+        "<div class='baseline-compact-row'>"
+        f"<div class='baseline-compact-model'>{html.escape(model_name)}</div>"
+        f"<div class='baseline-compact-score final'>{format_score(central_score)}</div>"
+        f"<div class='baseline-compact-state {central_state_cls}'>{html.escape(central_state)}</div>"
+        f"<div class='baseline-compact-delta {delta_cls}'>{html.escape(delta_text)}<span>{html.escape(rel_text)}</span></div>"
+        "</div>"
+        f"<div class='baseline-compact-note'>Цель: <strong>{html.escape(target_label)}</strong>. "
+        f"Оценка baseline: {html.escape(score_note)}. "
+        f"Глобальная ΔAP относительно лучшего baseline: {format_delta(delta)}.</div>"
+        "</div>"
     )
 
 

@@ -439,8 +439,10 @@ def load_compact_replay_bundle(
 
     timeline = replay_store.copy()
     if "state" not in timeline.columns:
-        risk = pd.to_numeric(timeline.get("y_risk", 0), errors="coerce").fillna(0).astype(int)
-        warning = pd.to_numeric(timeline.get("y_warning", 0), errors="coerce").fillna(0).astype(int)
+        risk_source = timeline["y_risk"] if "y_risk" in timeline.columns else pd.Series(0, index=timeline.index)
+        warning_source = timeline["y_warning"] if "y_warning" in timeline.columns else pd.Series(0, index=timeline.index)
+        risk = pd.to_numeric(risk_source, errors="coerce").fillna(0).astype(int)
+        warning = pd.to_numeric(warning_source, errors="coerce").fillna(0).astype(int)
         timeline["state"] = np.select([risk.eq(1), warning.eq(1)], ["risk", "warning"], default="normal")
     if "micro_window_sec" not in timeline.columns:
         timeline["micro_window_sec"] = 10
