@@ -69,6 +69,10 @@ def build_train_command(args: argparse.Namespace, run_root: Path, contract_path:
         args.normalization,
         "--metric-feature-mode",
         args.metric_feature_mode,
+        "--modern-log-backend",
+        args.modern_log_backend,
+        "--embeddinggemma-model",
+        args.embeddinggemma_model,
         "--epochs",
         str(args.epochs),
         "--batch-size",
@@ -92,7 +96,7 @@ def build_train_command(args: argparse.Namespace, run_root: Path, contract_path:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Train the single production Protocol-Fixed Efficient HADES model.")
+    parser = argparse.ArgumentParser(description="Train the lightweight multimodal warning contour.")
     parser.add_argument("--run-id", default="final_protocol_fixed_hades")
     parser.add_argument("--contract-path", default=str(DEFAULT_CONTRACT_PATH.relative_to(ROOT)))
     parser.add_argument("--run-root", default=str(DEFAULT_RUN_ROOT.relative_to(ROOT)))
@@ -100,7 +104,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bundle-out-dir", default=str(DEFAULT_BUNDLE_DIR.relative_to(ROOT)))
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--split-protocol", default="stratified_by_workload")
-    parser.add_argument("--variant", default="modern_metric")
+    parser.add_argument("--variant", default="efficient_hades")
+    parser.add_argument("--modern-log-backend", choices=["embeddinggemma"], default="embeddinggemma")
+    parser.add_argument("--embeddinggemma-model", default="google/embeddinggemma-300m")
     parser.add_argument("--seed", type=int, default=43)
     parser.add_argument("--normalization", choices=["raw", "global_norm", "workload_norm", "workload_node_norm"], default="workload_norm")
     parser.add_argument("--metric-feature-mode", choices=["raw", "deviation", "raw_plus_deviation"], default="raw_plus_deviation")
@@ -144,6 +150,8 @@ def main() -> None:
             "seed": int(args.seed),
             "normalization": args.normalization,
             "metric_feature_mode": args.metric_feature_mode,
+            "modern_log_backend": args.modern_log_backend,
+            "embeddinggemma_model": args.embeddinggemma_model,
             "monitor_target": args.monitor_target,
             "alert_target": args.alert_target,
         },

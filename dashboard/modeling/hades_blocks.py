@@ -1,5 +1,5 @@
 """
-Reusable Efficient HADES runtime blocks for the final protocol-fixed system.
+Reusable HADES-like runtime blocks for the lightweight multimodal warning contour.
 
 This module contains lower-level encoders, cached template embeddings, metric
 segment builders, evaluation helpers, and ONNX/INT8 utilities. Public training
@@ -132,41 +132,60 @@ class EfficientHadesConfig:
 
 VARIANT_SPECS = {
     "original": {
-        "log_embedding": "fasttext_hash",
+        "log_embedding": "embeddinggemma",
         "log_encoder": "transformer",
         "metric_encoder": "causal_conv",
         "runtime": "fp32",
-        "description": "FastText-like cached subword embeddings + Transformer logs + causal conv metrics + cross-modal attention.",
+        "description": "EmbeddingGemma cached log-template embeddings + Transformer logs + causal conv metrics + cross-modal attention.",
     },
     "modern_log": {
-        "log_embedding": "modern",
+        "log_embedding": "embeddinggemma",
         "log_encoder": "transformer",
         "metric_encoder": "causal_conv",
         "runtime": "fp32",
-        "description": "StaticEmbedding/EmbeddingGemma cached templates + original metric encoder + cross-modal attention.",
+        "description": "EmbeddingGemma cached templates + original metric encoder + cross-modal attention.",
     },
     "modern_metric": {
-        "log_embedding": "fasttext_hash",
+        "log_embedding": "embeddinggemma",
         "log_encoder": "transformer",
         "metric_encoder": "tiny_time_mixer",
         "runtime": "fp32",
-        "description": "FastText-like logs + TinyTimeMixer-lite metric segment encoder + cross-modal attention.",
+        "description": "EmbeddingGemma logs + TinyTimeMixer-lite metric segment encoder + cross-modal attention.",
     },
     "modern_runtime": {
-        "log_embedding": "fasttext_hash",
+        "log_embedding": "embeddinggemma",
         "log_encoder": "transformer",
         "metric_encoder": "causal_conv",
         "runtime": "onnx_int8",
-        "description": "Original-style model exported to ONNX INT8 for runtime comparison.",
+        "description": "EmbeddingGemma log encoder + original-style metrics exported to ONNX INT8 for runtime comparison.",
     },
     "efficient_hades": {
-        "log_embedding": "modern",
+        "log_embedding": "embeddinggemma",
         "log_encoder": "transformer",
         "metric_encoder": "tiny_time_mixer",
         "runtime": "onnx_int8",
-        "description": "Cached modern embeddings + TinyTimeMixer-lite metrics + cross-modal attention + ONNX INT8.",
+        "description": "EmbeddingGemma cached embeddings + TinyTimeMixer-lite metrics + cross-modal attention + ONNX INT8.",
     },
 }
+
+
+def resolve_log_embedding_backend(config_backend: str | None, spec: dict) -> str:
+    """Return the concrete log embedding backend for a variant.
+
+    The final research contour no longer supports hash-based log embeddings. Logs
+    are encoded once with EmbeddingGemma during preprocessing/export, then the
+    trained model and dashboard consume only those cached dense vectors.
+    """
+
+    requested = str(spec.get("log_embedding") or config_backend or "embeddinggemma")
+    if requested == "modern":
+        requested = str(config_backend or "embeddinggemma")
+    if requested != "embeddinggemma":
+        raise ValueError(
+            f"Unsupported log embedding backend '{requested}'. "
+            "The final contour requires EmbeddingGemma cached embeddings."
+        )
+    return "embeddinggemma"
 
 
 def set_seed(seed: int) -> None:
@@ -504,43 +523,27 @@ def select_log_events(events: pd.DataFrame, parser: DrainLikeParser, max_events:
     return part.loc[sorted(keep)].sort_values(["timestamp", "line_id"]).head(int(max_events))
 
 
-def hashed_subword_embedding(text: str, dim: int, mode: str) -> np.ndarray:
-    value = str(text).lower()
-    tokens: list[str] = []
-    if mode == "fasttext_hash":
-        clean = re.sub(r"\s+", " ", value)
-        for word in clean.split():
-            word = f"<{word}>"
-            for n in [3, 4, 5]:
-                tokens.extend(word[i : i + n] for i in range(max(1, len(word) - n + 1)))
-    else:
-        tokens = re.findall(r"[a-z0-9_*<>]+", value)
-        tokens.extend([f"component:{part}" for part in value.split(":")[:1]])
-    if not tokens:
-        tokens = ["__empty__"]
-    vec = np.zeros(int(dim), dtype=np.float32)
-    for token in tokens:
-        h = stable_hash(f"{mode}:{token}")
-        idx = h % int(dim)
-        sign = 1.0 if ((h >> 8) & 1) else -1.0
-        vec[idx] += sign
-    norm = float(np.linalg.norm(vec))
-    if norm > 1e-8:
-        vec /= norm
-    return vec.astype(np.float32)
-
-
 def embeddinggemma_cached(texts: list[str], dim: int, model_name: str, cache_file: Path) -> tuple[np.ndarray, dict]:
     if cache_file.exists():
         payload = np.load(cache_file, allow_pickle=True)
         cached_texts = payload["texts"].astype(str).tolist()
         cached = payload["embeddings"].astype(np.float32)
         if cached_texts == texts and cached.shape[1] == int(dim):
-            return cached, {"backend": "embeddinggemma", "cache_loaded": True, "cache_file": str(cache_file)}
+            return cached, {
+                "backend": "embeddinggemma",
+                "model_name": model_name,
+                "truncate_dim": int(dim),
+                "cache_loaded": True,
+                "cache_file": str(cache_file),
+            }
     try:
         from sentence_transformers import SentenceTransformer
 
-        encoder = SentenceTransformer(model_name, device="cuda" if torch.cuda.is_available() else "cpu")
+        device_name = "cuda" if torch.cuda.is_available() else "cpu"
+        try:
+            encoder = SentenceTransformer(model_name, device=device_name, trust_remote_code=True)
+        except TypeError:
+            encoder = SentenceTransformer(model_name, device=device_name)
         try:
             embeddings = encoder.encode(
                 texts,
@@ -562,14 +565,19 @@ def embeddinggemma_cached(texts: list[str], dim: int, model_name: str, cache_fil
             embeddings = np.pad(embeddings, ((0, 0), (0, int(dim) - embeddings.shape[1]))).astype(np.float32)
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(cache_file, texts=np.array(texts, dtype=object), embeddings=embeddings)
-        return embeddings, {"backend": "embeddinggemma", "cache_loaded": False, "cache_file": str(cache_file)}
-    except Exception as exc:
-        fallback = np.vstack([hashed_subword_embedding(text, dim, "static_hash") for text in texts]).astype(np.float32)
-        return fallback, {
-            "backend": "static_hash_fallback",
-            "embeddinggemma_error": f"{type(exc).__name__}: {exc}",
+        return embeddings, {
+            "backend": "embeddinggemma",
+            "model_name": model_name,
+            "truncate_dim": int(dim),
+            "device": device_name,
             "cache_loaded": False,
+            "cache_file": str(cache_file),
         }
+    except Exception as exc:
+        raise RuntimeError(
+            "EmbeddingGemma log encoder is required for the final contour, "
+            f"but `{model_name}` could not be loaded or executed: {type(exc).__name__}: {exc}"
+        ) from exc
 
 
 def build_template_embeddings(
@@ -583,12 +591,18 @@ def build_template_embeddings(
     if "__pad__" not in unique:
         unique.insert(0, "__pad__")
     if backend == "embeddinggemma":
-        digest = hashlib.sha1("\n".join(unique).encode("utf-8")).hexdigest()[:16]
+        digest_payload = json.dumps(
+            {"model": embeddinggemma_model, "dim": int(dim), "texts": unique},
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        digest = hashlib.sha1(digest_payload.encode("utf-8")).hexdigest()[:16]
         arr, manifest = embeddinggemma_cached(unique, dim, embeddinggemma_model, output_dir / "cache" / f"embeddinggemma_{digest}.npz")
     else:
-        mode = "fasttext_hash" if backend == "fasttext_hash" else "static_hash"
-        arr = np.vstack([hashed_subword_embedding(text, dim, mode) for text in unique]).astype(np.float32)
-        manifest = {"backend": mode, "cache_loaded": False}
+        raise ValueError(
+            f"Unsupported log embedding backend '{backend}'. "
+            "Only EmbeddingGemma cached embeddings are allowed in the final contour."
+        )
     mapping = {text: arr[i] for i, text in enumerate(unique)}
     manifest.update({"unique_templates": int(len(unique)), "embedding_dim": int(dim)})
     return mapping, manifest
@@ -1380,7 +1394,7 @@ def train_variant_seed(
 ) -> dict:
     set_seed(seed)
     spec = VARIANT_SPECS[variant]
-    embedding_key = cfg.modern_log_backend if spec["log_embedding"] == "modern" else "fasttext_hash"
+    embedding_key = resolve_log_embedding_backend(cfg.modern_log_backend, spec)
     arrays = {
         **arrays_by_embedding[embedding_key],
         **metric_arrays,
@@ -1562,7 +1576,7 @@ def write_experiment_card(output_dir: Path, cfg: EfficientHadesConfig, metrics: 
     ]
     cols = [col for col in cols if col in test.columns]
     lines = [
-        f"# Efficient HADES Hypothesis: `{cfg.run_id}`",
+        f"# HADES-like multimodal warning hypothesis: `{cfg.run_id}`",
         "",
         "This experiment preserves the HADES-like architecture: log sequence modeling, metric segment modeling, bidirectional cross-modal attention, pseudo-labeling, and binary normal/abnormal detection.",
         "",
@@ -1599,13 +1613,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--contract-path", default="dashboard/artifacts/contract/strict_intensity_contract.csv.gz")
     parser.add_argument("--output-dir", default="dashboard/artifacts/model_runs/hades_runtime_debug")
     parser.add_argument("--target", choices=["y_anomaly", "y_warning", "y_risk"], default="y_anomaly")
-    parser.add_argument("--variants", default="original,modern_log,modern_metric,modern_runtime,efficient_hades")
+    parser.add_argument("--variants", default="efficient_hades")
     parser.add_argument("--seeds", default="42")
     parser.add_argument("--max-rows", type=int, default=None)
     parser.add_argument("--max-log-events", type=int, default=32)
     parser.add_argument("--log-context-sec", type=int, default=120)
     parser.add_argument("--log-embedding-dim", type=int, default=128)
-    parser.add_argument("--modern-log-backend", choices=["static_hash", "embeddinggemma"], default="static_hash")
+    parser.add_argument("--modern-log-backend", choices=["embeddinggemma"], default="embeddinggemma")
     parser.add_argument("--embeddinggemma-model", default="google/embeddinggemma-300m")
     parser.add_argument("--metric-segment-sec", type=int, default=120)
     parser.add_argument("--metric-segment-len", type=int, default=64)
@@ -1726,9 +1740,7 @@ def main() -> None:
     }
 
     print("[3/6] Building cached log template embeddings")
-    needed_embeddings = {"fasttext_hash"}
-    if any(VARIANT_SPECS[variant]["log_embedding"] == "modern" for variant in cfg.variants):
-        needed_embeddings.add(cfg.modern_log_backend)
+    needed_embeddings = {resolve_log_embedding_backend(cfg.modern_log_backend, VARIANT_SPECS[variant]) for variant in cfg.variants}
     arrays_by_embedding: dict[str, dict[str, np.ndarray]] = {}
     log_manifests = {}
     for backend in sorted(needed_embeddings):
@@ -1760,7 +1772,7 @@ def main() -> None:
     }
     write_json(output_dir / "feature_manifest.json", feature_manifest)
 
-    print("[4/6] Training Efficient HADES ablations")
+    print("[4/6] Training HADES-like multimodal ablations")
     results = []
     for variant in cfg.variants:
         for seed in cfg.seeds:

@@ -131,6 +131,10 @@ def inspect_live_inference(model_dir: str | Path | None = None) -> LiveInference
         missing.append(SLICE_INDEX_FILE)
     if not manifest_path.exists():
         missing.append(SLICE_MANIFEST_FILE)
+    log_manifest = manifest.get("feature_rebuild", {}).get("log", {}) if isinstance(manifest, dict) else {}
+    log_backend = log_manifest.get("backend") or log_manifest.get("embedding", {}).get("backend")
+    if manifest_path.exists() and log_backend != "embeddinggemma":
+        missing.append(f"{SLICE_MANIFEST_FILE}:stale_log_backend={log_backend or 'unknown'}")
     ready = not missing
     reason = "ready" if ready else "missing: " + ", ".join(missing)
     return LiveInferenceStatus(
@@ -619,22 +623,37 @@ def _contract_log_arrays_from_replay(
     replay: pd.DataFrame,
     cfg: ProtocolConfig,
     spec: dict[str, Any],
+    output_dir: Path,
 ) -> tuple[np.ndarray, np.ndarray, dict[str, Any]]:
     max_events = int(cfg.max_log_events)
     dim = int(cfg.log_embedding_dim)
-    mode = "fasttext_hash" if spec.get("log_embedding") == "fasttext_hash" else "static_hash"
+    backend = eh.resolve_log_embedding_backend(cfg.modern_log_backend, spec)
     emb = np.zeros((len(replay), max_events, dim), dtype=np.float32)
     mask = np.zeros((len(replay), max_events), dtype=np.float32)
+    window_fragments: list[list[str]] = []
+    all_fragments: list[str] = ["__pad__"]
     selected_counts: list[int] = []
     for row_idx, text in enumerate(replay.get("log_text", pd.Series("", index=replay.index))):
         fragments = _split_log_text(text, max_events)
+        window_fragments.append(fragments[:max_events] + ["__pad__"] * max(0, max_events - len(fragments[:max_events])))
+        all_fragments.extend(fragments[:max_events])
         selected_counts.append(len(fragments))
+        mask[row_idx, : len(fragments[:max_events])] = 1.0
+    embedding_map, embedding_manifest = eh.build_template_embeddings(
+        all_fragments,
+        backend=backend,
+        dim=dim,
+        output_dir=output_dir,
+        embeddinggemma_model=cfg.embeddinggemma_model,
+    )
+    for row_idx, fragments in enumerate(window_fragments):
         for event_idx, fragment in enumerate(fragments[:max_events]):
-            emb[row_idx, event_idx] = eh.hashed_subword_embedding(fragment, dim, mode)
-            mask[row_idx, event_idx] = 1.0
+            emb[row_idx, event_idx] = embedding_map.get(fragment, embedding_map["__pad__"])
+    emb[mask <= 0.5] = 0.0
     return emb, mask, {
         "source": "strict_contract_log_text",
-        "backend": mode,
+        "backend": backend,
+        "embedding": embedding_manifest,
         "max_log_events": max_events,
         "embedding_dim": dim,
         "mean_selected_events": float(np.mean(selected_counts)) if selected_counts else 0.0,
@@ -673,7 +692,7 @@ def _write_contract_feature_slice(
         normalization=cfg.normalization,
         feature_mode=cfg.metric_feature_mode,
     )
-    log_emb, log_mask, log_manifest = _contract_log_arrays_from_replay(replay, cfg, spec)
+    log_emb, log_mask, log_manifest = _contract_log_arrays_from_replay(replay, cfg, spec, output_dir)
     target_matrix = _target_matrix_from_replay(replay, list(cfg.targets))
 
     np.savez_compressed(
@@ -744,7 +763,7 @@ def build_live_inference_slice(
     output_dir: str | Path | None = None,
     force: bool = False,
     demo_only: bool = True,
-    input_builder: str = "contract_features",
+    input_builder: str = "raw_rebuild",
 ) -> dict[str, Any]:
     model_dir = resolve_dashboard_model_dir(model_dir)
     output_dir = Path(output_dir).resolve() if output_dir is not None else model_dir
@@ -753,12 +772,15 @@ def build_live_inference_slice(
     index_path = output_dir / SLICE_INDEX_FILE
     manifest_path = output_dir / SLICE_MANIFEST_FILE
     if not force and slice_path.exists() and index_path.exists() and manifest_path.exists():
-        return _read_json(manifest_path)
+        manifest = _read_json(manifest_path)
+        log_manifest = manifest.get("feature_rebuild", {}).get("log", {}) if isinstance(manifest, dict) else {}
+        if log_manifest.get("backend") == "embeddinggemma" or log_manifest.get("embedding", {}).get("backend") == "embeddinggemma":
+            return manifest
 
     cfg = _cfg_from_model_dir(model_dir, contract_path)
     split_protocol = str(cfg.split_protocols[0] if cfg.split_protocols else "stratified_by_workload")
-    variant = str(cfg.variants[0] if cfg.variants else "modern_metric")
-    spec = eh.VARIANT_SPECS.get(variant, eh.VARIANT_SPECS["modern_metric"])
+    variant = str(cfg.variants[0] if cfg.variants else "efficient_hades")
+    spec = eh.VARIANT_SPECS.get(variant, eh.VARIANT_SPECS["efficient_hades"])
     feature_manifest = _feature_manifest_for_protocol(model_dir, split_protocol)
     metric_manifest = feature_manifest.get("metric", {}) if isinstance(feature_manifest, dict) else {}
     selected_channels = list(metric_manifest.get("selected_channels") or metric_manifest.get("channels") or [])
@@ -843,7 +865,7 @@ def build_live_inference_slice(
         train_idx=train_idx,
         max_events=cfg.max_log_events,
         context_sec=cfg.log_context_sec,
-        backend=spec["log_embedding"],
+        backend=eh.resolve_log_embedding_backend(cfg.modern_log_backend, spec),
         dim=cfg.log_embedding_dim,
         output_dir=output_dir,
         embeddinggemma_model=cfg.embeddinggemma_model,
@@ -1304,13 +1326,13 @@ def apply_live_scores_to_timeline(timeline: pd.DataFrame, live_frame: pd.DataFra
 
 
 def _main() -> None:
-    parser = argparse.ArgumentParser(description="Build or test prepared live Efficient HADES inference slice.")
+    parser = argparse.ArgumentParser(description="Build or test prepared live inference slice for the lightweight multimodal warning contour.")
     parser.add_argument("--model-dir", default=None)
     parser.add_argument("--contract-path", default=None)
     parser.add_argument("--build", action="store_true")
     parser.add_argument("--force", action="store_true")
     parser.add_argument("--all-replay", action="store_true")
-    parser.add_argument("--input-builder", default="contract_features", choices=["contract_features", "raw_rebuild"])
+    parser.add_argument("--input-builder", default="raw_rebuild", choices=["contract_features", "raw_rebuild"])
     parser.add_argument("--score", action="store_true")
     args = parser.parse_args()
     if args.build:

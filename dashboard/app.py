@@ -203,8 +203,8 @@ def render_header(case: pd.Series, current: pd.Series, step_idx: int, total_step
           <div class="app-head">
             <div class="logo-shield">∨</div>
             <div>
-              <div class="app-title">LCMAN Dashboard</div>
-              <div class="app-subtitle">Лабораторный интерфейс replay-инференса риска по логам и KPI</div>
+              <div class="app-title">Дашборд контура предупреждения</div>
+              <div class="app-subtitle">Интерфейс наблюдения для облегченного мультимодального контура по логам и KPI</div>
             </div>
           </div>
           <div class="status-grid">{status_cards}</div>
@@ -524,7 +524,7 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
     horizon_30 = safe_float(current.get("risk_score_30s", current.get("risk_score_raw", np.nan)), np.nan)
     warning = safe_float(current.get("warning_score", risk), risk)
     state = str(current.get("alert_state", current.get("pred_state", state_from_score(risk)))).lower()
-    model_label = str(view.dashboard_report.get("model_name", "финальная мультимодальная модель") or "финальная мультимодальная модель")
+    model_label = str(view.dashboard_report.get("model_name", "Облегченный мультимодальный контур предупреждения") or "Облегченный мультимодальный контур предупреждения")
     runtime = view.dashboard_report.get("runtime", {}) if isinstance(view.dashboard_report, dict) else {}
     int8_status = str(runtime.get("onnx_int8", {}).get("status", "n/a")) if isinstance(runtime, dict) else "n/a"
     kpi_available = bool(int(safe_float(current.get("kpi_available", 0), 0)))
@@ -559,7 +559,7 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
             ("Состояние alert-слоя", STATE_LABELS.get(state, state)),
             ("Диагностический warning", format_score(warning)),
             ("Разметка", anchor_label),
-            ("Модель", f"Live Efficient HADES: {model_label}" if view.mode == SCORE_SOURCE else ("Preview" if view.mode != "model_scoring" else f"Финальная модель: {model_label}")),
+            ("Модель", f"Live inference: {model_label}" if view.mode == SCORE_SOURCE else ("Preview" if view.mode != "model_scoring" else f"Контур: {model_label}")),
             ("Событие run", str(current.get("run_event_label", "n/a") or "n/a")),
             ("Lead time", "n/a" if not np.isfinite(safe_float(current.get("time_to_failure_sec", current.get("run_event_lead_time_sec")), np.nan)) else f"{safe_float(current.get('time_to_failure_sec', current.get('run_event_lead_time_sec')), np.nan):.0f} сек"),
         ]
@@ -608,7 +608,7 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
         st.markdown("<div class='section-title'>Пояснение</div>", unsafe_allow_html=True)
         if view.mode == SCORE_SOURCE:
             text = (
-                "Live-режим выполняет forward pass Efficient HADES по одному окну за шаг. "
+                "Live-режим выполняет forward pass облегченного мультимодального контура по одному окну за шаг. "
                 "Центральная линия показывает не сырую вероятность сбоя, а сглаженный alert-layer score: "
                 "ранний канал horizon_300s дает предварительное наблюдение, а переход в тревогу требует сильного score "
                 "и подтверждения ближними горизонтами horizon_120s / horizon_60s по FP-budget порогам."
@@ -716,8 +716,8 @@ def render_setup_required(inference) -> None:
           <div class="app-head">
             <div class="logo-shield">L</div>
             <div>
-              <div class="app-title">LCMAN Dashboard</div>
-              <div class="app-subtitle">Финальный replay-интерфейс требует bundle из dashboard/artifacts.</div>
+              <div class="app-title">Дашборд контура предупреждения</div>
+              <div class="app-subtitle">Replay-интерфейс для проверки bundle облегченного мультимодального контура.</div>
             </div>
           </div>
         </div>
@@ -742,7 +742,7 @@ def render_setup_required(inference) -> None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="LCMAN Dashboard",
+        page_title="Дашборд контура предупреждения",
         page_icon="L",
         layout="wide",
         initial_sidebar_state="collapsed",

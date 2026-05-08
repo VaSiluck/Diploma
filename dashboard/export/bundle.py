@@ -341,7 +341,7 @@ def _metrics_summary(frame: pd.DataFrame, events: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(
         [
             {
-                "model": "final-multimodal-strict-intensity-fusion",
+                "model": MODEL_BASELINE_LABEL,
                 "failure_runs": int(failure.sum()),
                 "normal_runs": int(normal.sum()),
                 "failure_run_recall": failure_run_recall,
@@ -377,9 +377,12 @@ DEFAULT_MODEL_DIR = DEFAULT_ARTIFACT_DIR / "model" / "protocol_fixed_efficient_h
 DEFAULT_BUNDLE_DIR = DEFAULT_ARTIFACT_DIR / "bundle"
 DEFAULT_CONTRACT_PATH = DEFAULT_ARTIFACT_DIR / "contract" / "strict_intensity_contract.csv.gz"
 DEFAULT_PROTOCOL_BASELINE_METRICS = DEFAULT_ARTIFACT_DIR / "reports" / "protocol_fixed_baselines" / "baseline_protocol_metrics.csv"
+MODEL_DISPLAY_NAME = "Облегченный мультимодальный контур предупреждения"
+MODEL_FAMILY = "lightweight_multimodal_warning_contour"
+MODEL_BASELINE_LABEL = MODEL_DISPLAY_NAME
 
 DEFAULT_SPLIT_PROTOCOL = "stratified_by_workload"
-DEFAULT_VARIANT = "modern_metric"
+DEFAULT_VARIANT = "efficient_hades"
 DEFAULT_SEED = 43
 PRIMARY_TARGET = "horizon_300s"
 SECONDARY_TARGET = "horizon_120s"
@@ -746,8 +749,8 @@ def _add_fusion_diagnostics(frame: pd.DataFrame) -> pd.DataFrame:
 
 def _prepare_replay_frame(frame: pd.DataFrame) -> pd.DataFrame:
     out = frame.copy()
-    out["model_mode"] = "protocol_fixed_efficient_hades"
-    out["model_name"] = "Protocol-Fixed Efficient HADES"
+    out["model_mode"] = MODEL_FAMILY
+    out["model_name"] = MODEL_DISPLAY_NAME
     out["score_source"] = "model_store"
     out["source_bundle"] = "protocol_fixed_cuda_h60"
     out["primary_dashboard_score"] = PRIMARY_TARGET
@@ -777,8 +780,7 @@ def _metrics_records(metrics: pd.DataFrame) -> list[dict[str, Any]]:
         "torch_latency_ms_per_sample",
     ]
     rows = metrics[[col for col in keep if col in metrics.columns]].copy()
-    rows["baseline"] = "final-multimodal-strict-intensity-fusion"
-    rows.loc[rows["target"].eq("y_risk"), "baseline"] = "final-multimodal-state-score"
+    rows["baseline"] = MODEL_BASELINE_LABEL
     rows["score_name"] = rows["target"].map(lambda value: f"score_{value}")
     rows["threshold_policy"] = "validation_best_f1"
     return rows.to_dict("records")
@@ -911,9 +913,9 @@ def _model_card(report: dict[str, Any], metrics: pd.DataFrame) -> str:
         [
             "# Финальная модель dashboard",
             "",
-            "**Модель:** Protocol-Fixed Efficient HADES.",
+            f"**Модель:** {MODEL_DISPLAY_NAME}.",
             "",
-            "Архитектурный путь сохраняет HADES-like смысл: log sequence modeling, metric time-series segment modeling, cross-modal fusion и multi-head early-warning targets.",
+            "Архитектурный путь сохраняет HADES-like смысл: log sequence modeling, metric time-series segment modeling, cross-modal fusion и multi-head early-warning targets. Название подчеркивает прикладной и облегченный характер реализации, а не заявку на новую фундаментальную архитектуру.",
             "",
             "## Основные каналы",
             "",
@@ -1058,7 +1060,7 @@ def export_protocol_fixed_bundle(
             output_dir=model_out_dir,
             force=True,
             demo_only=True,
-            input_builder="contract_features",
+            input_builder="raw_rebuild",
         )
         copy_live_inference_slice(model_out_dir, out_dir)
     except Exception as exc:
@@ -1072,8 +1074,8 @@ def export_protocol_fixed_bundle(
     quality_report = _quality_report(replay, validation, thresholds, events, runtime_slots)
 
     report = {
-        "model_name": "Protocol-Fixed Efficient HADES",
-        "model_family": "protocol_fixed_efficient_hades",
+        "model_name": MODEL_DISPLAY_NAME,
+        "model_family": MODEL_FAMILY,
         "run_id": protocol_run_dir.name,
         "source_dir": _relative(protocol_run_dir),
         "contract_path": _relative(contract_path),

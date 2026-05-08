@@ -1,5 +1,5 @@
 """
-Final Protocol-Fixed Efficient HADES implementation.
+Training core for the lightweight multimodal warning contour.
 
 This module contains the production training logic behind notebook 03:
 stratified workload split, workload-aware metric normalization, temporal
@@ -827,7 +827,7 @@ def train_variant_protocol(
 ) -> dict:
     eh.set_seed(seed)
     spec = eh.VARIANT_SPECS[variant]
-    embedding_key = cfg.modern_log_backend if spec["log_embedding"] == "modern" else "fasttext_hash"
+    embedding_key = eh.resolve_log_embedding_backend(cfg.modern_log_backend, spec)
     arrays = {**arrays_by_embedding[embedding_key], **metric_arrays, "target_matrix": target_matrix.astype(np.float32)}
     device = torch.device(cfg.device)
     model = MultiHeadCrossModalHades(
@@ -946,7 +946,7 @@ def write_card(output_dir: Path, cfg: ProtocolConfig, metrics: pd.DataFrame, ale
     ]
     cols = [col for col in cols if col in best.columns]
     lines = [
-        f"# Protocol-Fixed Efficient HADES: `{cfg.run_id}`",
+        f"# Облегченный мультимодальный контур предупреждения: `{cfg.run_id}`",
         "",
         "This experiment keeps the HADES-like architecture and changes the data protocol first:",
         "",
@@ -986,7 +986,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", default="dashboard/artifacts/model_runs/protocol_fixed_hades")
     parser.add_argument("--split-protocols", default="current,stratified_by_workload,leave_one_workload_out")
     parser.add_argument("--leave-one-workloads", default="test")
-    parser.add_argument("--variants", default="modern_metric,efficient_hades")
+    parser.add_argument("--variants", default="efficient_hades")
     parser.add_argument("--seeds", default="42")
     parser.add_argument("--targets", default="default")
     parser.add_argument("--alert-target", default="horizon_120s")
@@ -994,7 +994,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-log-events", type=int, default=32)
     parser.add_argument("--log-context-sec", type=int, default=120)
     parser.add_argument("--log-embedding-dim", type=int, default=128)
-    parser.add_argument("--modern-log-backend", choices=["static_hash", "embeddinggemma"], default="static_hash")
+    parser.add_argument("--modern-log-backend", choices=["embeddinggemma"], default="embeddinggemma")
     parser.add_argument("--embeddinggemma-model", default="google/embeddinggemma-300m")
     parser.add_argument("--metric-segment-sec", type=int, default=120)
     parser.add_argument("--metric-segment-len", type=int, default=64)
@@ -1158,10 +1158,11 @@ def main() -> None:
             "frame": frame,
         }
 
-        print("[4/7] Building cached log template embeddings")
-        needed_embeddings = {"fasttext_hash"}
-        if any(eh.VARIANT_SPECS[variant]["log_embedding"] == "modern" for variant in cfg.variants):
-            needed_embeddings.add(cfg.modern_log_backend)
+        print("[4/7] Building cached EmbeddingGemma log template embeddings")
+        needed_embeddings = {
+            eh.resolve_log_embedding_backend(cfg.modern_log_backend, eh.VARIANT_SPECS[variant])
+            for variant in cfg.variants
+        }
         arrays_by_embedding = {}
         log_manifests = {}
         for backend in sorted(needed_embeddings):
@@ -1242,7 +1243,7 @@ def main() -> None:
 
     print("[7/7] Writing experiment card")
     write_card(output_dir, cfg, metrics, alert_df)
-    print(f"Done. Protocol-fixed Efficient HADES outputs written to: {output_dir}")
+    print(f"Done. Lightweight multimodal warning contour outputs written to: {output_dir}")
     test_view = metrics.loc[metrics["split"].astype(str).eq("test")].copy()
     if not test_view.empty:
         cols = ["split_protocol", "variant", "seed", "target", "threshold_policy", "average_precision", "roc_auc", "precision", "recall", "f1", "false_positives", "missed_anomalies"]

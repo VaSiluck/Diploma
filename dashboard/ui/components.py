@@ -1432,8 +1432,8 @@ def _derive_diagnostic_from_table(table: pd.DataFrame, target: str) -> dict[str,
         "hades-like-strict-intensity-fusion",
         "hades-like-state-score",
         "final-hades-like-model",
-        "final-multimodal-strict-intensity-fusion",
-        "final-multimodal-state-score",
+        "lightweight_multimodal_warning_contour",
+        "Облегченный мультимодальный контур предупреждения",
     }
     central_mask = rows["baseline"].astype(str).isin(central_names)
     central_rows = rows.loc[central_mask].copy()
