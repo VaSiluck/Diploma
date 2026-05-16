@@ -900,6 +900,30 @@ def _make_kpi_overview_item(
     }
 
 
+def _kpi_series_signature(item: dict[str, Any]) -> tuple[Any, ...] | None:
+    y = pd.to_numeric(pd.Series(item.get("y", [])), errors="coerce")
+    if int(y.notna().sum()) < 2:
+        return None
+    values: list[Any] = []
+    for value in y.to_numpy(dtype=float):
+        values.append(None if not np.isfinite(value) else round(float(value), 6))
+    return tuple(values)
+
+
+def _deduplicate_kpi_items(items: list[dict[str, Any]], top_n: int) -> list[dict[str, Any]]:
+    deduped: list[dict[str, Any]] = []
+    seen: set[tuple[Any, ...]] = set()
+    for item in items:
+        signature = _kpi_series_signature(item)
+        if signature is None or signature in seen:
+            continue
+        seen.add(signature)
+        deduped.append(item)
+        if len(deduped) >= int(top_n):
+            break
+    return deduped
+
+
 def _short_source_text(value: Any, limit: int = 78) -> str:
     text = str(value or "").strip()
     if not text or text.lower() == "nan":
@@ -940,7 +964,7 @@ def build_kpi_evidence(run_df: pd.DataFrame, kpi_columns: list[str], current_idx
             if item:
                 items.append(item)
         if items:
-            return items[:top_n]
+            return _deduplicate_kpi_items(items, top_n)
 
     cpu_idle = _aggregate_kpi_series(
         run_df,
@@ -1071,4 +1095,4 @@ def build_kpi_evidence(run_df: pd.DataFrame, kpi_columns: list[str], current_idx
             -float(item["score"]),
         )
     )
-    return items[:top_n]
+    return _deduplicate_kpi_items(items, top_n)

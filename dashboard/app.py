@@ -56,6 +56,8 @@ from dashboard.runtime.view_model import (
 
 MAX_REPLAY_STEPS = 240
 LIVE_STREAM_DELAY_SEC = 0.65
+DISPLAY_WARNING_TARGET = "horizon_180s"
+INTERNAL_WARNING_TARGET = "y_warning"
 
 
 @st.cache_data(show_spinner=False)
@@ -322,7 +324,7 @@ def render_controls(cases: pd.DataFrame, timeline: pd.DataFrame, live_mode: bool
                 rows_scored = max(float(live_meta.get("rows_scored", 0) or 0), 1.0)
                 per_window_latency = float(elapsed) / rows_scored if elapsed is not None else np.nan
                 st.markdown(_live_progress_html(st.session_state.replay_step, len(run_df), per_window_latency), unsafe_allow_html=True)
-                st.caption(f"Дашборд раскрывает поток по одному окну; будущие score не показываются. Окон run: {real_windows}.")
+                st.caption(f"Live-поток: раскрыто {st.session_state.replay_step + 1}/{len(run_df)} окон · всего в run: {real_windows}.")
             else:
                 st.markdown(
                     (
@@ -345,7 +347,7 @@ def render_controls(cases: pd.DataFrame, timeline: pd.DataFrame, live_mode: bool
                     st.session_state.replay_step = slider_value - 1
                     st.session_state.autoplay = False
                     st.rerun()
-                st.caption(f"{st.session_state.replay_step + 1}/{len(run_df)} · реальные окна run: {real_windows}")
+                st.caption(f"Replay: {st.session_state.replay_step + 1}/{len(run_df)} · реальные окна run: {real_windows}")
 
     case = _selected_case(cases)
     run_df = run_frame_for_case(timeline, str(case["run_id"]), max_steps=MAX_REPLAY_STEPS)
@@ -410,10 +412,6 @@ def render_log_panel(run_df: pd.DataFrame, step_idx: int) -> None:
         )
         log_df = build_log_evidence(run_df, step_idx)
         st.markdown(render_log_table_html(log_df), unsafe_allow_html=True)
-        st.markdown(
-            "<div class='panel-caption'>Таблица сравнивает текущее окно и последние окна с ранним baseline-префиксом. Если логов в текущем окне нет, это явно показывается как degraded/fallback context.</div>",
-            unsafe_allow_html=True,
-        )
         excerpt = str(run_df.iloc[step_idx].get("log_text", "")).strip()
         excerpt = " ".join(excerpt.split())
         if len(excerpt) > 700:
@@ -488,10 +486,6 @@ def render_kpi_panel(run_df: pd.DataFrame, step_idx: int, kpi_columns: list[str]
                     with extra_cols[idx % 2]:
                         with st.container(border=True):
                             render_kpi_card(item, idx, "kpi_extra")
-        st.markdown(
-            "<div class='panel-caption'>Карточки агрегируют центральные KPI-семейства: CPU, память, диск и сеть. Серые/пустые состояния означают отсутствие данных в выбранном окне.</div>",
-            unsafe_allow_html=True,
-        )
 
 
 def _modality_signal_bar(label: str, available: bool, score: float, share: float | None, color: str) -> str:
@@ -549,11 +543,9 @@ def _fusion_interpretation(
 def render_side_panel(current: pd.Series, view, inference) -> None:
     risk = safe_float(current.get("alert_score", current.get("model_score_raw", current.get("model_score", 0.0))), 0.0)
     rank_score = safe_float(current.get("model_score_rank", np.nan), np.nan)
-    strict_risk = safe_float(current.get("risk_score_raw", current.get("risk_score", np.nan)), np.nan)
     horizon_300 = safe_float(current.get("model_score_raw_300s", current.get("model_score_raw", np.nan)), np.nan)
     horizon_120 = safe_float(current.get("model_score_120s", np.nan), np.nan)
     horizon_60 = safe_float(current.get("model_score_60s", np.nan), np.nan)
-    horizon_30 = safe_float(current.get("risk_score_30s", current.get("risk_score_raw", np.nan)), np.nan)
     warning = safe_float(current.get("warning_score", risk), risk)
     state = str(current.get("alert_state", current.get("pred_state", state_from_score(risk)))).lower()
     model_label = str(view.dashboard_report.get("model_name", "Облегченный мультимодальный контур предупреждения") or "Облегченный мультимодальный контур предупреждения")
@@ -580,16 +572,14 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
         rows = [
             ("Оценка alert-слоя", format_score(risk)),
             ("Ранг среди validation-окон", "n/a" if not np.isfinite(rank_score) else format_score(rank_score)),
-            ("Strict risk-channel", "n/a" if not np.isfinite(strict_risk) else format_score(strict_risk)),
             ("Horizon 300s", "n/a" if not np.isfinite(horizon_300) else format_score(horizon_300)),
             ("Horizon 120s", "n/a" if not np.isfinite(horizon_120) else format_score(horizon_120)),
             ("Horizon 60s", "n/a" if not np.isfinite(horizon_60) else format_score(horizon_60)),
-            ("Risk 30s", "n/a" if not np.isfinite(horizon_30) else format_score(horizon_30)),
             ("ONNX INT8", int8_status),
             ("Порог наблюдения", format_score(safe_float(current.get("watch_threshold", np.nan), np.nan))),
             ("Порог тревоги", format_score(safe_float(current.get("alert_threshold", current.get("threshold_risk", np.nan)), np.nan))),
             ("Состояние alert-слоя", STATE_LABELS.get(state, state)),
-            ("Диагностический warning", format_score(warning)),
+            ("Диагностический horizon_180s", format_score(warning)),
             ("Разметка", anchor_label),
             ("Модель", f"Live inference: {model_label}" if view.mode == SCORE_SOURCE else ("Preview" if view.mode != "model_scoring" else f"Контур: {model_label}")),
             ("Событие run", str(current.get("run_event_label", "n/a") or "n/a")),
@@ -634,40 +624,10 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
             unsafe_allow_html=True,
         )
         st.markdown(f"<div class='explain-box'>{html.escape(fusion_text)}</div>", unsafe_allow_html=True)
-        st.caption("Эта панель показывает диагностические auxiliary-head scores и доступность модальностей. Это не причинная атрибуция: высокий KPI-score не означает, что сбой вызван KPI.")
 
     with st.container(border=True):
-        st.markdown("<div class='section-title'>Пояснение</div>", unsafe_allow_html=True)
-        if view.mode == SCORE_SOURCE:
-            text = (
-                "Live-режим выполняет forward pass облегченного мультимодального контура по одному окну за шаг. "
-                "Центральная линия показывает не сырую вероятность сбоя, а сглаженный alert-layer score: "
-                "ранний канал horizon_300s дает предварительное наблюдение, а переход в тревогу требует сильного score "
-                "и подтверждения ближними горизонтами horizon_120s / horizon_60s по FP-budget порогам."
-            )
-        elif view.mode == "model_scoring":
-            model_rows = int(view.timeline["score_source"].eq("model_store").sum()) if "score_source" in view.timeline.columns else 0
-            text = (
-                f"Dashboard использует финальный replay bundle для {model_rows} окон. "
-                "Оценка модели отделена от решения alert-слоя и фактического инцидента."
-            )
-        else:
-            text = (
-                "Compact model bundle отсутствует, поэтому интерфейс не утверждает модельный prediction. "
-                "Текущий replay показывает, как будет выглядеть лабораторный инференс на contract-окнах после запуска notebook 03 в train-режиме."
-            )
-        st.markdown(f"<div class='explain-box'>{html.escape(text)}</div>", unsafe_allow_html=True)
-
-    with st.container(border=True):
-        target = st.segmented_control(
-            "Цель baseline",
-            ["y_risk", "y_warning"],
-            default="y_risk",
-            format_func=lambda value: "risk" if value == "y_risk" else "warning",
-            key="baseline_target",
-            label_visibility="collapsed",
-            width="stretch",
-        )
+        target = DISPLAY_WARNING_TARGET
+        st.caption(f"Сравнение baseline для целевого канала `{DISPLAY_WARNING_TARGET}` (внутри модели: `{INTERNAL_WARNING_TARGET}`).")
         st.markdown(
             render_honest_baseline_card_html(view.baseline_table.copy(), view.dashboard_report, str(target), current),
             unsafe_allow_html=True,
@@ -682,7 +642,8 @@ def render_side_panel(current: pd.Series, view, inference) -> None:
 
 def render_about(bundle, inference, view) -> None:
     st.markdown("---")
-    with st.expander("Model / About / Data contract", expanded=False):
+    with st.expander("Тех. детали (для ВКР и отладки)", expanded=False):
+        st.caption("Служебные артефакты и диагностика. Для операционного чтения основной экран выше.")
         st.markdown("#### Contract artifacts")
         st.dataframe(checks_to_frame(bundle.artifact_checks), use_container_width=True, hide_index=True)
 
@@ -696,8 +657,7 @@ def render_about(bundle, inference, view) -> None:
             {"Показатель": "workloads", "Значение": str(view.stats["workloads"])},
             {"Показатель": "micro window, сек", "Значение": str(view.stats["micro_window_sec"])},
             {"Показатель": "macro window, сек", "Значение": str(view.stats["macro_window_sec"])},
-            {"Показатель": "warning share", "Значение": f"{view.stats['warning_share']:.3f}"},
-            {"Показатель": "risk share", "Значение": f"{view.stats['risk_share']:.3f}"},
+            {"Показатель": "horizon_180s share", "Значение": f"{view.stats['warning_share']:.3f}"},
             {"Показатель": "log coverage", "Значение": f"{view.stats['log_available_share']:.3f}"},
             {"Показатель": "KPI coverage", "Значение": f"{view.stats['kpi_available_share']:.3f}"},
         ]
@@ -818,9 +778,7 @@ def main() -> None:
                 view.cases = choose_demo_cases(view.timeline)
                 view.mode = SCORE_SOURCE
                 view.mode_note = (
-                    "Live inference stream: dashboard показывает один длинный test-stream. "
-                    "Каждый следующий шаг выполняет forward pass модели для нового prefix, "
-                    "а будущие score остаются скрытыми до момента обработки."
+                    "Live forward pass по одному окну: показаны только уже посчитанные шаги."
                 )
         except Exception as exc:
             st.warning(f"Live inference stream недоступен, используется replay-store: {exc}")
@@ -849,9 +807,7 @@ def main() -> None:
             view.timeline = apply_live_scores_to_timeline(view.timeline, live_frame)
             view.mode = SCORE_SOURCE
             view.mode_note = (
-                f"Live inference stream: dashboard выполнил forward pass для первых "
-                f"{int(live_meta.get('rows_scored', 0))} окон единого test-stream. "
-                "Оставшаяся часть графика является очередью: она видна как временная шкала, но score раскрывается только по мере обработки."
+                f"Live forward pass: обработано {int(live_meta.get('rows_scored', 0))} окон текущего test-stream."
             )
         except Exception as exc:
             st.warning(f"Live inference simulation недоступен, используется replay-store: {exc}")
@@ -891,12 +847,7 @@ def main() -> None:
         ),
         unsafe_allow_html=True,
     )
-    mode_note = (
-        view.mode_note
-        if view.mode != "model_scoring"
-        else view.mode_note
-    )
-    st.markdown(f"<div class='mode-note'>{html.escape(mode_note)}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='mode-note'>{html.escape(view.mode_note)}</div>", unsafe_allow_html=True)
 
     main_cols = st.columns([3.3, 1.0], gap="medium")
     with main_cols[0]:

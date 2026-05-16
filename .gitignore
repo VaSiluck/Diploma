@@ -1,7 +1,8 @@
 ﻿# Raw datasets and generated research artifacts
 raw_data/
 raw_data.rar
-dashboard/artifacts/
+dashboard/artifacts
+dashboard/artifacts/bundle
 outputs/
 lcman/outputs/
 hades_data

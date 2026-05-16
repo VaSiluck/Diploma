@@ -12,6 +12,10 @@ from dashboard.runtime.view_model import STATE_LABELS
 
 RISK_NORMAL_MAX = 0.30
 RISK_WARNING_MAX = 0.70
+DISPLAY_WARNING_TARGET = "horizon_180s"
+_TARGET_ALIAS_TO_INTERNAL = {
+    DISPLAY_WARNING_TARGET: "y_warning",
+}
 
 STATE_COLORS = {
     "normal": "#16a34a",
@@ -1474,6 +1478,19 @@ def _diagnostic_for_target(report: dict[str, Any], target: str) -> dict[str, Any
     return {}
 
 
+def _resolve_internal_target(target: str) -> str:
+    value = str(target or "").strip()
+    return _TARGET_ALIAS_TO_INTERNAL.get(value, value)
+
+
+def _display_target_label(target: str) -> str:
+    if str(target) == "y_warning":
+        return DISPLAY_WARNING_TARGET
+    if str(target) == "y_risk":
+        return "risk"
+    return str(target)
+
+
 def _derive_diagnostic_from_table(table: pd.DataFrame, target: str) -> dict[str, Any]:
     if table.empty:
         return {}
@@ -1565,17 +1582,18 @@ def render_honest_baseline_card_html(
     target: str,
     current: pd.Series | None = None,
 ) -> str:
-    diag = _diagnostic_for_target(report, target)
+    internal_target = _resolve_internal_target(target)
+    diag = _diagnostic_for_target(report, internal_target)
     if not diag or not np.isfinite(safe_float(diag.get("best_baseline_average_precision"), np.nan)):
-        derived = _derive_diagnostic_from_table(table, target)
+        derived = _derive_diagnostic_from_table(table, internal_target)
         if derived:
             diag = derived
     if not diag:
         return "<div class='explain-box'>Baseline-сравнение недоступно.</div>"
 
     is_run_level = str(diag.get("target", "")) == "run_level_alert"
-    target_short = "risk" if target == "y_risk" else "warning"
-    target_label = "alert-layer" if is_run_level else ("risk" if target == "y_risk" else "warning")
+    target_short = "risk" if internal_target == "y_risk" else "warning"
+    target_label = "alert-layer" if is_run_level else _display_target_label(internal_target)
     delta = safe_float(diag.get("delta_vs_best_baseline_ap"), np.nan)
     best_baseline = str(diag.get("best_baseline", "baseline"))
 
@@ -1616,7 +1634,7 @@ def render_honest_baseline_card_html(
             current.get("alert_score", current.get("model_score_raw", current.get("model_score"))),
             np.nan,
         )
-        if target == "y_warning":
+        if internal_target == "y_warning":
             central_score = safe_float(current.get("warning_score", central_score), central_score)
         baseline_model, baseline_score, score_note = local_baseline_score(current)
     else:
@@ -1650,7 +1668,7 @@ def render_honest_baseline_card_html(
     baseline_state, baseline_state_cls = compact_state(float(baseline_score)) if np.isfinite(baseline_score) else ("n/a", "normal")
     central_state, central_state_cls = compact_state(float(central_score)) if np.isfinite(central_score) else ("n/a", "normal")
     model_name = "Контур предупреждения"
-    score_header = "Оценка риска" if target == "y_risk" else "Оценка warning"
+    score_header = "Оценка риска" if internal_target == "y_risk" else "Оценка horizon_180s"
 
     return (
         "<div class='baseline-compact'>"
@@ -1678,9 +1696,10 @@ def render_honest_baseline_card_html(
 def render_reliability_html(report: dict[str, Any], calibration_bins: pd.DataFrame) -> str:
     strict_rows = report.get("strict_research_summary", []) if isinstance(report, dict) else []
     if strict_rows:
+        strict_rows = [row for row in strict_rows if str(row.get("target")) == "y_warning"]
         rows_html = []
         for row in strict_rows:
-            target = "risk" if str(row.get("target")) == "y_risk" else "warning"
+            target = DISPLAY_WARNING_TARGET
             delta = safe_float(row.get("delta_ap"), np.nan)
             cls = "delta-good" if np.isfinite(delta) and delta > 0 else ("delta-bad" if np.isfinite(delta) and delta < 0 else "delta-even")
             rows_html.append(
@@ -1703,6 +1722,9 @@ def render_reliability_html(report: dict[str, Any], calibration_bins: pd.DataFra
     diagnostics = report.get("baseline_diagnostics", []) if isinstance(report, dict) else []
     if not diagnostics:
         return "<div class='explain-box'>Диагностика надежности недоступна.</div>"
+    diagnostics = [row for row in diagnostics if str(row.get("target")) == "y_warning"]
+    if not diagnostics:
+        return "<div class='explain-box'>Диагностика reliability для horizon_180s недоступна.</div>"
 
     ece_by_target: dict[str, float] = {}
     if not calibration_bins.empty and {"target", "n", "abs_calibration_error"}.issubset(calibration_bins.columns):
@@ -1716,7 +1738,7 @@ def render_reliability_html(report: dict[str, Any], calibration_bins: pd.DataFra
     tiles = []
     for row in diagnostics:
         target = str(row.get("target"))
-        label = "Warning" if target == "y_warning" else "Risk"
+        label = DISPLAY_WARNING_TARGET if target == "y_warning" else target
         ap = safe_float(row.get("central_average_precision"), np.nan)
         random_ap = safe_float(row.get("random_reference_ap"), np.nan)
         roc = safe_float(row.get("central_roc_auc"), np.nan)
